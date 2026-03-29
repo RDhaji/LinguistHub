@@ -171,11 +171,37 @@
             else { firebase.auth().signInWithPopup(provider).catch(() => firebase.auth().signInWithRedirect(provider)); }
         }
 
+        // 1. ADDED THIS: Explicitly catch the redirect result
+        firebase.auth().getRedirectResult()
+            .then((result) => {
+                if (result.user) {
+                    console.log("Login captured via redirect:", result.user.email);
+                }
+            }).catch((error) => {
+                console.error("Auth redirect error:", error.code, error.message);
+                if(error.code === 'auth/internal-error') {
+                   alert("Please check your internet or try opening in Chrome directly.");
+                }
+            });
+
+        // 2. UPDATED THIS: Standard state listener
         firebase.auth().onAuthStateChanged(u => {
-            if (u) { document.getElementById('login-overlay').style.display = 'none'; userPath = 'users/' + u.uid;
-                db.ref(userPath + '/history').on('value', s => { const d = s.val() || {}; history = Object.keys(d).sort((a,b) => d[b].timestamp - d[a].timestamp); updateSidebar(); });
-                db.ref(userPath + '/bookmarks').on('value', s => { bookmarks = Object.keys(s.val() || {}); updateSidebar(); updateStarUI(); });
-            } else { document.getElementById('login-overlay').style.display = 'flex'; }
+            if (u) { 
+                document.getElementById('login-overlay').style.display = 'none'; 
+                userPath = 'users/' + u.uid;
+                db.ref(userPath + '/history').on('value', s => { 
+                    const d = s.val() || {}; 
+                    history = Object.keys(d).sort((a,b) => d[b].timestamp - d[a].timestamp); 
+                    updateSidebar(); 
+                });
+                db.ref(userPath + '/bookmarks').on('value', s => { 
+                    bookmarks = Object.keys(s.val() || {}); 
+                    updateSidebar(); 
+                    updateStarUI(); 
+                });
+            } else { 
+                document.getElementById('login-overlay').style.display = 'flex'; 
+            }
         });
 
         async function handleSearch(m = null) {
