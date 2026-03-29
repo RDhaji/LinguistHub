@@ -1,11 +1,11 @@
 {
   "name": "LinguistHub Master",
   "short_name": "LinguistHub",
-  "start_url": ".",
+  "description": "Linguistic Research & Archive Hub",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#f1f5f9",
   "theme_color": "#2563eb",
-  "description": "Linguistic Research & Archive Hub",
   "icons": [
     {
       "src": "icon.png",
