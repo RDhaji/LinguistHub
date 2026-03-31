@@ -39,6 +39,7 @@
         .list-item { padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; cursor: pointer; transition: 0.2s; gap: 12px; }
         .list-item:hover { background: var(--item-hover); }
         .item-text { flex: 1; font-weight: 600; font-size: 0.95rem; text-transform: capitalize; }
+        
         .sidebar-footer { padding: 20px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
         .btn-side { width: 100%; padding: 12px; border-radius: 12px; border: none; cursor: pointer; font-weight: 800; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
         .btn-side:hover { filter: brightness(1.1); }
@@ -61,7 +62,6 @@
         .res-container { background: var(--card); border-radius: 30px; padding: 40px; border: 1px solid var(--border); box-shadow: var(--shadow); width: 100%; box-sizing: border-box; }
         .res-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
         
-        /* STAR FIX */
         .main-star { width: 35px !important; height: 35px !important; min-width: 35px; fill: var(--star-inactive); cursor: pointer; transition: 0.2s; vertical-align: middle; }
         .main-star.active { fill: var(--star-active) !important; filter: drop-shadow(0 0 5px rgba(245,158,11,0.3)); }
         
@@ -156,69 +156,64 @@
     </main>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc", authDomain: "lingustichub.firebaseapp.com", databaseURL: "https://lingustichub-default-rtdb.firebaseio.com/", projectId: "lingustichub" };
+        // 1. DATABASE & KEYS
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc", 
+            authDomain: "lingustichub.firebaseapp.com", 
+            databaseURL: "https://lingustichub-default-rtdb.firebaseio.com/", 
+            projectId: "lingustichub" 
+        };
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database(), provider = new firebase.auth.GoogleAuthProvider();
-        const DICT_KEY = "7c14969b-2038-4024-ade3-ad9680fd94ff", THES_KEY = "9e966fec-f0d8-497c-97f3-dd9938d108a0", GOOGLE_KEY = "AIzaSyDAmT4Bl0iwFJtKwq-sRg7Fl9ChW8X_x08";
+        const db = firebase.database();
+        const DICT_KEY = "7c14969b-2038-4024-ade3-ad9680fd94ff";
+        const THES_KEY = "9e966fec-f0d8-497c-97f3-dd9938d108a0";
+        const GOOGLE_KEY = "AIzaSyDAmT4Bl0iwFJtKwq-sRg7Fl9ChW8X_x08";
+
         let history = [], bookmarks = [], lastWord = "", lastTrans = "", currentTab = 'history', userPath = "";
 
+        // 2. UI FUNCTIONS
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
-        function toggleTheme() { const c = document.body.getAttribute('data-theme'); document.body.setAttribute('data-theme', c === 'dark' ? 'light' : 'dark'); }
+        function toggleTheme() { 
+            const c = document.body.getAttribute('data-theme'); 
+            document.body.setAttribute('data-theme', c === 'dark' ? 'light' : 'dark'); 
+        }
+
+        // 3. AUTHENTICATION (Mobile-Ready)
+        firebase.auth().getRedirectResult().then(res => { if(res.user) console.log("Redirect success!"); });
+
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-overlay').style.display = 'none';
+                userPath = 'users/' + user.uid;
+                db.ref(userPath + '/history').on('value', s => {
+                    const data = s.val() || {};
+                    history = Object.keys(data).sort((a,b) => data[b].timestamp - data[a].timestamp);
+                    updateSidebar();
+                });
+                db.ref(userPath + '/bookmarks').on('value', s => {
+                    bookmarks = Object.keys(s.val() || {});
+                    updateSidebar();
+                    updateStarUI();
+                });
+            } else {
+                document.getElementById('login-overlay').style.display = 'flex';
+            }
+        });
 
         function login() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    
-    // Attempt the Popup first (Best for Desktop)
-    firebase.auth().signInWithPopup(provider)
-        .then((result) => {
-            console.log("Logged in via Popup!");
-        })
-        .catch((error) => {
-            // If the popup is blocked (Standard on Mobile), use Redirect
-            if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
-                firebase.auth().signInWithRedirect(provider);
-            } else {
-                console.error("Login error:", error.message);
-                alert("Login failed: " + error.message);
-            }
-        });
-
-
-        // 1. ADDED THIS: Explicitly catch the redirect result
-      // 1. Catch the Redirect (Handles the "back from Google" moment)
-firebase.auth().getRedirectResult()
-    .then((result) => {
-        if (result.user) {
-            console.log("Login captured via redirect!");
-        }
-    }).catch((error) => {
-        console.error("Auth redirect error:", error.message);
-    });
-
-// 2. The Smart Login (The engine for the "Open Archive" button)
-function login() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    
-    firebase.auth().signInWithPopup(provider)
-        .then((result) => {
-            console.log("Logged in via Popup!");
-        })
-        .catch((error) => {
-            if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
-                firebase.auth().signInWithRedirect(provider);
-            } else {
-                console.error("Login error:", error.message);
-            }
-        });
-            };
+            const provider = new firebase.auth.GoogleAuthProvider();
+            firebase.auth().signInWithPopup(provider).catch(e => {
+                if(e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') firebase.auth().signInWithRedirect(provider);
+            });
         }
 
-    
-
-        async function handleSearch(m = null) {
-            const w = (m || document.getElementById('wordInput').value).trim().toLowerCase();
+        // 4. SEARCH ENGINE (Google + Merriam + Datamuse)
+        async function handleSearch(manual = null) {
+            const w = (manual || document.getElementById('wordInput').value).trim().toLowerCase();
             if(!w || !userPath) return;
-            lastWord = w; document.getElementById('results').style.display = 'none'; document.getElementById('loader').style.display = 'block';
+            lastWord = w; 
+            document.getElementById('results').style.display = 'none'; 
+            document.getElementById('loader').style.display = 'block';
             try {
                 const tr = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, { method: 'POST', body: JSON.stringify({ q: w, target: 'ar', format: 'text' }) });
                 const trD = await tr.json();
@@ -233,24 +228,27 @@ function login() {
             } catch (e) { console.error(e); } finally { document.getElementById('loader').style.display = 'none'; }
         }
 
+        // 5. RENDER & SIDEBAR
         function render(data) {
             const d = data.dict[0]; lastTrans = data.trans;
             document.getElementById('results').style.display = 'block';
             document.getElementById('r-word').innerText = data.word;
             document.getElementById('r-trans').innerText = data.trans;
-            document.getElementById('r-pos').innerText = d.fl || "noun";
-            document.getElementById('r-def').innerText = d.shortdef ? d.shortdef[0] : "Definition not found.";
+            document.getElementById('r-pos').innerText = d.fl || "word";
+            document.getElementById('r-def').innerText = d.shortdef ? d.shortdef[0] : "Not found.";
             document.getElementById('r-syll').innerText = d.hwi?.hw?.replace(/\*/g, '·') || data.word;
             document.getElementById('r-etym').innerText = d.et ? d.et[0][1].replace(/\{.*?\}/g, '') : "Ancient origins preserved.";
             document.getElementById('r-rhyme').innerHTML = data.rhymes.map(r => `<span class="rhyme-item" onclick="handleSearch('${r.word}')">${r.word}</span>`).join('');
             
             const grid = document.getElementById('r-family-grid'); grid.innerHTML = "";
             let groups = { noun: [], adjective: [], verb: [] };
-            data.dict.forEach(entry => {
-                const head = entry.hwi?.hw?.replace(/\*/g, '').toLowerCase();
-                const type = (entry.fl || "related").toLowerCase();
-                if(head && head !== data.word && groups[type]) groups[type].push(head);
-            });
+            if(Array.isArray(data.dict)) {
+                data.dict.forEach(entry => {
+                    const head = entry.hwi?.hw?.replace(/\*/g, '').toLowerCase();
+                    const type = (entry.fl || "related").toLowerCase();
+                    if(head && head !== data.word && groups[type]) groups[type].push(head);
+                });
+            }
             for (let [type, members] of Object.entries(groups)) {
                 if (members.length > 0) {
                     const sq = document.createElement('div'); sq.className = 'family-square';
@@ -262,9 +260,10 @@ function login() {
                 }
             }
         }
-        function speak(lang) { const u = new SpeechSynthesisUtterance(lang === 'ar' ? lastTrans : lastWord); u.lang = lang === 'ar' ? 'ar-SA' : 'en-US'; window.speechSynthesis.speak(u); }
+
+        function speak(l) { const u = new SpeechSynthesisUtterance(l === 'ar' ? lastTrans : lastWord); u.lang = l === 'ar' ? 'ar-SA' : 'en-US'; window.speechSynthesis.speak(u); }
         function toggleBookmark() { if (bookmarks.includes(lastWord)) db.ref(userPath + '/bookmarks/' + lastWord).remove(); else db.ref(userPath + '/bookmarks/' + lastWord).set(true); }
-        function updateStarUI() { const star = document.getElementById('mainStar'); if (bookmarks.includes(lastWord)) star.classList.add('active'); else star.classList.remove('active'); }
+        function updateStarUI() { const s = document.getElementById('mainStar'); if (bookmarks.includes(lastWord)) s.classList.add('active'); else s.classList.remove('active'); }
         function updateSidebar() {
             const c = document.getElementById('list-items'); c.innerHTML = "";
             const list = currentTab === 'history' ? history : bookmarks;
@@ -276,8 +275,8 @@ function login() {
             });
         }
         function setTab(t) { currentTab = t; document.getElementById('tab-history').classList.toggle('active', t==='history'); document.getElementById('tab-bookmarks').classList.toggle('active', t==='bookmarks'); updateSidebar(); }
-        function clearCloud() { if(confirm("Permanently purge cloud archive?")) db.ref(userPath).remove(); }
-        function exportData() { const b = new Blob([JSON.stringify({history, bookmarks}, null, 2)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'LinguistHub_Master.json'; a.click(); }
+        function clearCloud() { if(confirm("Purge cloud?")) db.ref(userPath).remove(); }
+        function exportData() { const b = new Blob([JSON.stringify({history, bookmarks}, null, 2)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'LinguistHub.json'; a.click(); }
     </script>
 </body>
 </html>
