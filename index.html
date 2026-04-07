@@ -70,7 +70,15 @@
         .underline { height: 4px; background: #f59e0b; border-radius: 10px; width: 60px; margin-top: 4px; }
         
         /* Adjusted Output Word Font */
-        #r-word { margin:0; font-size: 1.6rem; text-transform: capitalize; letter-spacing: -0.5px; overflow-wrap: anywhere; max-width: 80%; }
+        #r-word { 
+    margin: 0; 
+    font-size: 1.1rem;      /* Changed from 1.6rem */
+    font-weight: 800;       /* Makes it pop even when small */
+    letter-spacing: -0.2px; /* Tightens the character gaps */
+    text-transform: capitalize; 
+    overflow-wrap: anywhere; /* Prevents breaking the UI if it's still too long */
+    
+}
 
         /* Optimized Arabic Box */
         .arabic-box { background: var(--accent); padding: 8px 20px; border-radius: 14px; margin-bottom: 15px; text-align: center; direction: rtl; color: white; max-width: fit-content; margin-left: auto; margin-right: auto; }
