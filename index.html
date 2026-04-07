@@ -55,32 +55,33 @@
 
         .content-wrapper { width: 100%; max-width: 800px; margin-top: 50px; } 
         
-        /* Search Bar with X button */
         .search-container { position: relative; display: flex; gap: 10px; width: 100%; margin-bottom: 20px; }
         .search-wrapper { position: relative; flex: 1; }
-        input[type="text"] { width: 100%; padding: 16px 45px 16px 20px; border-radius: 14px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 1rem; outline: none; box-shadow: var(--shadow); box-sizing: border-box; }
+        input[type="text"] { width: 100%; padding: 14px 45px 14px 20px; border-radius: 14px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 1rem; outline: none; box-shadow: var(--shadow); box-sizing: border-box; }
         .clear-search { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--star-inactive); font-weight: bold; font-size: 1.1rem; display: none; }
         .btn-search { background: var(--accent); color: white; border: none; padding: 0 30px; border-radius: 14px; cursor: pointer; font-weight: 800; text-transform: uppercase; font-size: 0.75rem; }
 
         .res-container { background: var(--card); border-radius: 24px; padding: 25px; border: 1px solid var(--border); box-shadow: var(--shadow); width: 100%; box-sizing: border-box; }
-        .res-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .res-header { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; }
         
-        .main-star { width: 30px !important; height: 30px !important; min-width: 30px; fill: var(--star-inactive); cursor: pointer; transition: 0.2s; }
+        .main-star { width: 26px !important; height: 26px !important; min-width: 26px; fill: var(--star-inactive); cursor: pointer; transition: 0.2s; }
         .main-star.active { fill: var(--star-active) !important; }
         
-        .underline { height: 5px; background: #f59e0b; border-radius: 10px; width: 80px; margin-top: 5px; }
+        .underline { height: 4px; background: #f59e0b; border-radius: 10px; width: 60px; margin-top: 4px; }
         
-        /* Reduced Arabic Box */
-        .arabic-box { background: var(--accent); padding: 12px 25px; border-radius: 16px; margin-bottom: 18px; text-align: center; direction: rtl; color: white; max-width: 60%; margin-left: auto; margin-right: auto; }
-        .arabic-text { font-family: 'Amiri', serif; font-size: 1.3rem; font-weight: bold; }
+        /* Adjusted Output Word Font */
+        #r-word { margin:0; font-size: 1.6rem; text-transform: capitalize; letter-spacing: -0.5px; overflow-wrap: anywhere; max-width: 80%; }
 
-        /* Narrower Family Grid */
-        .family-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 15px; }
-        .family-square { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 12px; min-height: 80px; }
-        .tag { display: inline-block; padding: 5px 10px; border-radius: 8px; margin: 3px; font-size: 0.75rem; font-weight: 700; background: var(--card); border: 1px solid var(--border); cursor: pointer; color: var(--text); }
-        .rhyme-item { display: inline-block; margin: 3px; padding: 5px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; font-size: 0.75rem; font-weight: 800; color: var(--accent); cursor: pointer; }
+        /* Optimized Arabic Box */
+        .arabic-box { background: var(--accent); padding: 8px 20px; border-radius: 14px; margin-bottom: 15px; text-align: center; direction: rtl; color: white; max-width: fit-content; margin-left: auto; margin-right: auto; }
+        .arabic-text { font-family: 'Amiri', serif; font-size: 1.2rem; font-weight: bold; }
 
-        #r-def { background: var(--bg); padding: 18px; border-radius: 16px; border-left: 6px solid #f59e0b; margin-bottom: 20px; font-size: 1rem; line-height: 1.5; }
+        .family-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 15px; }
+        .family-square { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 10px; min-height: 70px; }
+        .tag { display: inline-block; padding: 4px 8px; border-radius: 6px; margin: 2px; font-size: 0.7rem; font-weight: 700; background: var(--card); border: 1px solid var(--border); cursor: pointer; color: var(--text); }
+        .rhyme-item { display: inline-block; margin: 2px; padding: 4px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; font-size: 0.7rem; font-weight: 800; color: var(--accent); cursor: pointer; }
+
+        #r-def { background: var(--bg); padding: 15px; border-radius: 14px; border-left: 5px solid #f59e0b; margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4; }
         
         #login-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.98); z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; color:white; text-align:center; }
         .loader { display: none; text-align: center; padding: 20px; font-weight: 900; font-size: 1rem; color: var(--accent); letter-spacing: 5px; animation: pulse 1.5s infinite; }
@@ -127,14 +128,14 @@
                     <div class="res-header">
                         <div style="display: flex; flex-direction: column; width: 100%;">
                             <div style="display: flex; align-items: center; gap: 15px;">
-                                <h1 id="r-word" style="margin:0; font-size: 2.4rem; text-transform: capitalize; letter-spacing: -1px;"></h1>
+                                <h1 id="r-word"></h1>
                                 <button style="background:none; border:none; cursor:pointer; padding:0;" onclick="speak('en')">
-                                    <svg style="width:22px; fill:var(--accent);" viewBox="0 0 24 24"><path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16.02C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/></svg>
+                                    <svg style="width:20px; fill:var(--accent);" viewBox="0 0 24 24"><path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16.02C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/></svg>
                                 </button>
                                 <svg class="main-star" id="mainStar" onclick="toggleBookmark()" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                             </div>
                             <div class="underline"></div>
-                            <span id="r-pos" style="font-weight:900; font-size:0.65rem; color:var(--accent); text-transform:uppercase; margin-top:8px; display:block; letter-spacing:2px;"></span>
+                            <span id="r-pos" style="font-weight:900; font-size:0.6rem; color:var(--accent); text-transform:uppercase; margin-top:6px; display:block; letter-spacing:1.5px;"></span>
                         </div>
                     </div>
 
@@ -144,16 +145,16 @@
 
                     <div id="r-def"></div>
 
-                    <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
                         <div><div id="r-family-grid" class="family-grid"></div></div>
-                        <div style="display: flex; gap: 30px; border-top: 1px solid var(--border); padding-top: 15px;">
+                        <div style="display: flex; gap: 20px; border-top: 1px solid var(--border); padding-top: 12px;">
                             <div style="flex: 1;">
-                                <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Archive</h4>
-                                <p style="font-size:0.85rem; margin:0;"><strong>Syll:</strong> <span id="r-syll" style="color:var(--accent);"></span></p>
-                                <p id="r-etym" style="font-size:0.75rem; margin-top:5px; line-height:1.4; opacity:0.8; font-style: italic;"></p>
+                                <h4 style="margin-bottom:6px; opacity:0.6; font-size: 0.6rem; text-transform: uppercase;">Archive</h4>
+                                <p style="font-size:0.8rem; margin:0;"><strong>Syll:</strong> <span id="r-syll" style="color:var(--accent);"></span></p>
+                                <p id="r-etym" style="font-size:0.7rem; margin-top:4px; line-height:1.3; opacity:0.8; font-style: italic;"></p>
                             </div>
                             <div style="flex: 1;">
-                                <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Rhymes</h4>
+                                <h4 style="margin-bottom:6px; opacity:0.6; font-size: 0.6rem; text-transform: uppercase;">Rhymes</h4>
                                 <div id="r-rhyme"></div>
                             </div>
                         </div>
@@ -266,7 +267,7 @@
             for (let [type, members] of Object.entries(groups)) {
                 if (members.length > 0) {
                     const sq = document.createElement('div'); sq.className = 'family-square';
-                    sq.innerHTML = `<span style="font-size:0.6rem; font-weight:900; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:8px;">${type}</span>`;
+                    sq.innerHTML = `<span style="font-size:0.55rem; font-weight:900; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:5px;">${type}</span>`;
                     [...new Set(members)].slice(0, 4).forEach(m => {
                         const t = document.createElement('span'); t.className = 'tag'; t.innerText = m; t.onclick = () => handleSearch(m); sq.appendChild(t);
                     });
@@ -276,7 +277,6 @@
         }
 
         function speak(l) { 
-            // Removed Arabic TTS per instructions
             if(l === 'ar') return;
             const u = new SpeechSynthesisUtterance(lastWord); 
             u.lang = 'en-US'; 
