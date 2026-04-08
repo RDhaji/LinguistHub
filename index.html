@@ -25,6 +25,7 @@
         
         body { font-family: 'Inter', sans-serif; margin: 0; display: flex; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; transition: 0.3s; }
         
+        /* Sidebar Architecture */
         #sidebar { 
             width: 280px; min-width: 280px; background: var(--sidebar); 
             border-right: 1px solid var(--border); display: flex; flex-direction: column; 
@@ -43,6 +44,7 @@
         .sidebar-footer { padding: 15px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
         .btn-side { width: 100%; padding: 10px; border-radius: 10px; border: none; cursor: pointer; font-weight: 800; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
 
+        /* Main View Architecture */
         main { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; position: relative; }
         
         #menu-toggle {
@@ -55,12 +57,21 @@
 
         .content-wrapper { width: 100%; max-width: 800px; margin-top: 50px; } 
         
-        .search-container { position: relative; display: flex; gap: 10px; width: 100%; margin-bottom: 20px; }
-        .search-wrapper { position: relative; flex: 1; }
-        input[type="text"] { width: 100%; padding: 14px 45px 14px 20px; border-radius: 14px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 1rem; outline: none; box-shadow: var(--shadow); box-sizing: border-box; }
-        .clear-search { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--star-inactive); font-weight: bold; font-size: 1.1rem; display: none; }
-        .btn-search { background: var(--accent); color: white; border: none; padding: 0 30px; border-radius: 14px; cursor: pointer; font-weight: 800; text-transform: uppercase; font-size: 0.75rem; }
+        /* Search Component */
+        .search-container { position: relative; display: flex; gap: 12px; width: 100%; margin-bottom: 25px; }
+        .search-wrapper { position: relative; flex: 1; display: flex; }
+        input[type="text"] { 
+            width: 100%; padding: 15px 45px 15px 20px; border-radius: 16px; border: 1px solid var(--border); 
+            background: var(--card); color: var(--text); font-size: 1.15rem; outline: none; box-shadow: var(--shadow);
+        }
+        .clear-search { 
+            position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; 
+            color: var(--star-inactive); font-weight: bold; font-size: 0.9rem; display: none; z-index: 5;
+        }
 
+        .btn-search { background: var(--accent); color: white; border: none; padding: 0 30px; border-radius: 16px; cursor: pointer; font-weight: 800; text-transform: uppercase; font-size: 0.75rem; }
+
+        /* Result Component */
         .res-container { background: var(--card); border-radius: 24px; padding: 25px; border: 1px solid var(--border); box-shadow: var(--shadow); width: 100%; box-sizing: border-box; }
         .res-header { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; }
         
@@ -69,20 +80,16 @@
         
         .underline { height: 4px; background: #f59e0b; border-radius: 10px; width: 60px; margin-top: 4px; }
         
-        /* Adjusted Output Word Font */
-        #r-word { 
-    margin: 0; 
-    font-size: 1.1rem;      /* Changed from 1.6rem */
-    font-weight: 800;       /* Makes it pop even when small */
-    letter-spacing: -0.2px; /* Tightens the character gaps */
-    text-transform: capitalize; 
-    overflow-wrap: anywhere; /* Prevents breaking the UI if it's still too long */
-    
-}
+        /* Compact Output Typography */
+        #r-word { margin: 0; font-size: 1.1rem; font-weight: 800; letter-spacing: -0.2px; text-transform: capitalize; overflow-wrap: anywhere; }
 
-        /* Optimized Arabic Box */
+        /* Arabic Bar Component */
         .arabic-box { background: var(--accent); padding: 8px 20px; border-radius: 14px; margin-bottom: 15px; text-align: center; direction: rtl; color: white; max-width: fit-content; margin-left: auto; margin-right: auto; }
         .arabic-text { font-family: 'Amiri', serif; font-size: 1.2rem; font-weight: bold; }
+
+        /* Synonyms & Tags */
+        .synonym-item { display: inline-block; margin: 2px; padding: 4px 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 0.75rem; font-weight: 700; color: #b45309; cursor: pointer; }
+        [data-theme="dark"] .synonym-item { background: #451a03; border-color: #78350f; color: #fcd34d; }
 
         .family-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 15px; }
         .family-square { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 10px; min-height: 70px; }
@@ -119,7 +126,7 @@
     <main>
         <button id="menu-toggle" onclick="toggleSidebar()">☰</button>
         <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
-
+        
         <div class="content-wrapper">
             <div class="search-container">
                 <div class="search-wrapper">
@@ -162,8 +169,10 @@
                                 <p id="r-etym" style="font-size:0.7rem; margin-top:4px; line-height:1.3; opacity:0.8; font-style: italic;"></p>
                             </div>
                             <div style="flex: 1;">
-                                <h4 style="margin-bottom:6px; opacity:0.6; font-size: 0.6rem; text-transform: uppercase;">Rhymes</h4>
-                                <div id="r-rhyme"></div>
+                                <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Rhyme Index</h4>
+                                <div id="r-rhyme" style="margin-bottom: 12px;"></div>
+                                <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Synonyms</h4>
+                                <div id="r-syns"></div>
                             </div>
                         </div>
                     </div>
@@ -173,6 +182,7 @@
     </main>
 
     <script>
+        // 1. CONFIGURATION
         const firebaseConfig = { 
             apiKey: "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc", 
             authDomain: "lingustichub.firebaseapp.com", 
@@ -187,6 +197,7 @@
 
         let history = [], bookmarks = [], lastWord = "", lastTrans = "", currentTab = 'history', userPath = "";
 
+        // 2. UI CONTROLLER
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
         function toggleTheme() { 
             const c = document.body.getAttribute('data-theme'); 
@@ -206,6 +217,7 @@
             input.focus();
         }
 
+        // 3. DATA SYNC
         firebase.auth().onAuthStateChanged(user => {
             if (user) {
                 document.getElementById('login-overlay').style.display = 'none';
@@ -227,9 +239,12 @@
 
         function login() {
             const provider = new firebase.auth.GoogleAuthProvider();
-            firebase.auth().signInWithPopup(provider);
+            firebase.auth().signInWithPopup(provider).catch(e => {
+                firebase.auth().signInWithRedirect(provider);
+            });
         }
 
+        // 4. ENGINE
         async function handleSearch(manual = null) {
             const w = (manual || document.getElementById('wordInput').value).trim().toLowerCase();
             if(!w || !userPath) return;
@@ -252,18 +267,41 @@
             } catch (e) { console.error(e); } finally { document.getElementById('loader').style.display = 'none'; }
         }
 
+        // 5. RENDERER
         function render(data) {
-            const d = data.dict[0]; lastTrans = data.trans;
+            const d = data.dict[0];
             document.getElementById('results').style.display = 'block';
             document.getElementById('r-word').innerText = data.word;
             document.getElementById('r-trans').innerText = data.trans;
-            document.getElementById('r-pos').innerText = d.fl || "word";
-            document.getElementById('r-def').innerText = d.shortdef ? d.shortdef[0] : "Not found.";
-            document.getElementById('r-syll').innerText = d.hwi?.hw?.replace(/\*/g, '·') || data.word;
-            document.getElementById('r-etym').innerText = d.et ? d.et[0][1].replace(/\{.*?\}/g, '') : "Ancient origins.";
+            document.getElementById('r-pos').innerText = d ? (d.fl || "word") : "word";
+            
+            const definition = d?.shortdef ? d.shortdef[0] : (data.thes[0]?.shortdef ? data.thes[0].shortdef[0] : "Definition not available.");
+            document.getElementById('r-def').innerText = definition;
+            
+            document.getElementById('r-syll').innerText = d?.hwi?.hw?.replace(/\*/g, '·') || data.word;
+            document.getElementById('r-etym').innerText = d?.et ? d.et[0][1].replace(/\{.*?\}/g, '') : "Origin tracking preserved.";
+            
             document.getElementById('r-rhyme').innerHTML = data.rhymes.map(r => `<span class="rhyme-item" onclick="handleSearch('${r.word}')">${r.word}</span>`).join('');
             
-            const grid = document.getElementById('r-family-grid'); grid.innerHTML = "";
+            // Synonyms Logic
+            const synContainer = document.getElementById('r-syns');
+            synContainer.innerHTML = "";
+            if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.syns) {
+                const synList = data.thes[0].meta.syns[0].slice(0, 10); 
+                synList.forEach(syn => {
+                    const span = document.createElement('span');
+                    span.className = 'synonym-item';
+                    span.innerText = syn;
+                    span.onclick = () => handleSearch(syn);
+                    synContainer.appendChild(span);
+                });
+            } else {
+                synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
+            }
+
+            // POS Grid logic
+            const grid = document.getElementById('r-family-grid'); 
+            grid.innerHTML = "";
             let groups = { noun: [], adjective: [], verb: [] };
             if(Array.isArray(data.dict)) {
                 data.dict.forEach(entry => {
@@ -275,8 +313,8 @@
             for (let [type, members] of Object.entries(groups)) {
                 if (members.length > 0) {
                     const sq = document.createElement('div'); sq.className = 'family-square';
-                    sq.innerHTML = `<span style="font-size:0.55rem; font-weight:900; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:5px;">${type}</span>`;
-                    [...new Set(members)].slice(0, 4).forEach(m => {
+                    sq.innerHTML = `<span style="font-size:0.65rem; font-weight:900; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:12px;">${type}</span>`;
+                    [...new Set(members)].slice(0, 6).forEach(m => {
                         const t = document.createElement('span'); t.className = 'tag'; t.innerText = m; t.onclick = () => handleSearch(m); sq.appendChild(t);
                     });
                     grid.appendChild(sq);
@@ -284,6 +322,7 @@
             }
         }
 
+        // 6. FEATURES
         function speak(l) { 
             if(l === 'ar') return;
             const u = new SpeechSynthesisUtterance(lastWord); 
@@ -291,8 +330,16 @@
             window.speechSynthesis.speak(u); 
         }
 
-        function toggleBookmark() { if (bookmarks.includes(lastWord)) db.ref(userPath + '/bookmarks/' + lastWord).remove(); else db.ref(userPath + '/bookmarks/' + lastWord).set(true); }
-        function updateStarUI() { const s = document.getElementById('mainStar'); if (bookmarks.includes(lastWord)) s.classList.add('active'); else s.classList.remove('active'); }
+        function toggleBookmark() { 
+            if (bookmarks.includes(lastWord)) db.ref(userPath + '/bookmarks/' + lastWord).remove();
+            else db.ref(userPath + '/bookmarks/' + lastWord).set(true); 
+        }
+
+        function updateStarUI() { 
+            const s = document.getElementById('mainStar'); 
+            if (bookmarks.includes(lastWord)) s.classList.add('active'); else s.classList.remove('active'); 
+        }
+
         function updateSidebar() {
             const c = document.getElementById('list-items'); c.innerHTML = "";
             const list = currentTab === 'history' ? history : bookmarks;
@@ -303,9 +350,23 @@
                 c.appendChild(item);
             });
         }
-        function setTab(t) { currentTab = t; document.getElementById('tab-history').classList.toggle('active', t==='history'); document.getElementById('tab-bookmarks').classList.toggle('active', t==='bookmarks'); updateSidebar(); }
-        function clearCloud() { if(confirm("Purge cloud?")) db.ref(userPath).remove(); }
-        function exportData() { const b = new Blob([JSON.stringify({history, bookmarks}, null, 2)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'LinguistHub.json'; a.click(); }
+
+        function setTab(t) { 
+            currentTab = t; 
+            document.getElementById('tab-history').classList.toggle('active', t==='history'); 
+            document.getElementById('tab-bookmarks').classList.toggle('active', t==='bookmarks'); 
+            updateSidebar(); 
+        }
+
+        function clearCloud() { 
+            if(confirm("Permanently purge cloud history?")) db.ref(userPath).remove(); 
+        }
+
+        function exportData() { 
+            const b = new Blob([JSON.stringify({history, bookmarks}, null, 2)], {type: 'application/json'}); 
+            const a = document.createElement('a'); a.href = URL.createObjectURL(b); 
+            a.download = 'LinguistHub_Backup.json'; a.click(); 
+        }
     </script>
 </body>
 </html>
