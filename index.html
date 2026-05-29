@@ -112,6 +112,9 @@
         #login-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.98); z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; color:white; text-align:center; }
         .loader { display: none; text-align: center; padding: 20px; font-weight: 900; font-size: 1rem; color: var(--accent); letter-spacing: 5px; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        #history-count { color: #94a3b8; font-size: 0.7em; margin-left: 6px; font-weight: normal; }
+#pinned-count { color: #f59e0b; font-size: 0.7em; margin-left: 6px; font-weight: normal; }
+      
     </style>
 </head>
 <body data-theme="light">
@@ -123,8 +126,8 @@
 
     <aside id="sidebar">
         <div class="sidebar-tabs">
-            <button class="tab-btn active" id="tab-history" onclick="setTab('history')">History</button>
-            <button class="tab-btn" id="tab-bookmarks" onclick="setTab('bookmarks')">Pinned</button>
+           <button class="tab-btn active" id="tab-history" onclick="setTab('history')">History <span id="history-count"></span></button>
+           <button class="tab-btn" id="tab-bookmarks" onclick="setTab('bookmarks')">Pinned <span id="pinned-count"></span></button>
         </div>
         <div id="list-items"></div>
         <div class="sidebar-footer">
@@ -280,7 +283,7 @@
 
         // 5. RENDERER
         function render(data) {
-            const d = data.dict[0];
+            const d = data.dict.find(entry => entry.hwi.hw === data.word) || data.dict[0];
             document.getElementById('results').style.display = 'block';
             document.getElementById('r-word').innerText = data.word;
             document.getElementById('r-trans').innerText = data.trans;
@@ -329,16 +332,27 @@
                         const t = document.createElement('span'); t.className = 'tag'; t.innerText = m; t.onclick = () => handleSearch(m); sq.appendChild(t);
                     });
                     grid.appendChild(sq);
+                       document.getElementById('history-count').innerText = "(" + history.length + ")";
+           document.getElementById('pinned-count').innerText = "(" + bookmarks.length + ")";
+        // This is the closing brace of your render function
+
                 }
             }
         }
 
         // 6. FEATURES
-        function speak(l) { 
-            if(l === 'ar') return;
-            const u = new SpeechSynthesisUtterance(lastWord); 
-            u.lang = 'en-US'; 
-            window.speechSynthesis.speak(u); 
+        function speak(l) {
+    if(l === 'ar') return;
+    const u = new SpeechSynthesisUtterance(lastWord);
+    
+    // Find a US-English voice
+    const voices = window.speechSynthesis.getVoices();
+    const usVoice = voices.find(v => v.lang === 'en-US' || v.lang === 'en_US');
+    if (usVoice) u.voice = usVoice;
+    
+    u.lang = 'en-US';
+    window.speechSynthesis.speak(u);
+ 
         }
 
         function toggleBookmark() { 
@@ -360,6 +374,9 @@
                 <span style="color:#cbd5e1; cursor:pointer;" onclick="event.stopPropagation(); db.ref(userPath+'/'+currentTab+'/'+'${w}').remove()">✕</span>`;
                 c.appendChild(item);
             });
+            grid.appendChild(sq);
+                       document.getElementById('history-count').innerText = "(" + history.length + ")";
+           document.getElementById('pinned-count').innerText = "(" + bookmarks.length + ")";
         }
 
         function setTab(t) { 
