@@ -303,18 +303,15 @@
 
         // 5. RENDERER
         function render(data) {
-            // 1. Find exact match by stripping asterisks, or fallback to the first entry
             const d = data.dict.find(entry => entry.hwi?.hw?.replace(/\*/g, '') === data.word) || data.dict[0];
             
             document.getElementById('results').style.display = 'block';
             document.getElementById('r-word').innerText = data.word;
             document.getElementById('r-trans').innerText = data.trans;
             
-            // 2. Determine precise Part of Speech & Cross References
             let displayPos = d ? (d.fl || "word") : "word";
             let cxInfo = ""; 
             
-            // A. Check UROS (Undefined Run-Ons) for derivatives
             if (d && d.uros) {
                 const runOn = d.uros.find(uro => uro.ure?.replace(/\*/g, '') === data.word);
                 if (runOn && runOn.fl) {
@@ -322,7 +319,6 @@
                 }
             }
             
-            // B. Check CXS (Cognate Cross-References) for conjugations/plurals
             if (d && d.cxs) {
                 const cxTarget = d.cxs[0];
                 if (cxTarget.cxl && cxTarget.cxtis && cxTarget.cxtis[0]) {
@@ -334,7 +330,6 @@
             
             document.getElementById('r-pos').innerText = displayPos + cxInfo;
             
-            // 3. Safely handle Definitions
             let definition = "Definition not available.";
             if (d?.shortdef && d.shortdef.length > 0) {
                 definition = d.shortdef[0];
@@ -345,13 +340,11 @@
             }
             document.getElementById('r-def').innerText = definition;
             
-            // 4. Archive details
             document.getElementById('r-syll').innerText = d?.hwi?.hw?.replace(/\*/g, '·') || data.word;
             document.getElementById('r-etym').innerText = d?.et ? d.et[0][1].replace(/\{.*?\}/g, '') : "Origin tracking preserved.";
             
             document.getElementById('r-rhyme').innerHTML = data.rhymes.map(r => `<span class="rhyme-item" onclick="handleSearch('${r.word}')">${r.word}</span>`).join('');
             
-            // Synonyms Logic
             const synContainer = document.getElementById('r-syns');
             synContainer.innerHTML = "";
             if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.syns) {
@@ -367,7 +360,6 @@
                 synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
             }
 
-            // POS Grid logic
             const grid = document.getElementById('r-family-grid'); 
             grid.innerHTML = "";
             let groups = { noun: [], adjective: [], verb: [] };
@@ -389,14 +381,44 @@
                 }
             }
 
-            // Update Badge Counts
             document.getElementById('history-count').innerText = history.length;
             document.getElementById('pinned-count').innerText = bookmarks.length;
         }
 
-        // 6. FEATURES
-        
-        
+        // 6. FEATURES: Cloud TTS API integration
+        async function speak(l) {
+            if (!lastWord || l === 'ar') return;
+
+            const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_KEY}`;
+            
+            const requestBody = {
+                input: { text: lastWord },
+                voice: { languageCode: 'en-US', name: 'en-US-Journey-D' },
+                audioConfig: { audioEncoding: 'MP3', speakingRate: 0.9 }
+            };
+
+            try {
+                const response = await fetch(ttsUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error("API Error:", data.error.message);
+                    alert("TTS Error: Did you enable the API in Google Cloud Console?");
+                    return;
+                }
+
+                const audio = new Audio("data:audio/mp3;base64," + data.audioContent);
+                audio.play();
+                
+            } catch (error) {
+                console.error("Audio generation failed:", error);
+            }
+        }
 
         function toggleBookmark() { 
             if (bookmarks.includes(lastWord)) db.ref(userPath + '/bookmarks/' + lastWord).remove();
