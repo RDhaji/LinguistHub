@@ -270,12 +270,12 @@
                 document.getElementById('login-overlay').style.display = 'flex';
             }
         });
-
-        function login() {
+        
+function login() {
             const provider = new firebase.auth.GoogleAuthProvider();
-            firebase.auth().signInWithPopup(provider).catch(e => {
-                firebase.auth().signInWithRedirect(provider);
-            });
+            firebase.auth().signInWithRedirect(provider);
+        
+        
         }
 
         // 4. ENGINE
