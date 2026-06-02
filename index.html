@@ -281,7 +281,7 @@ function login() {
         }
 
         // 4. ENGINE
-        async function handleSearch(manual = null) {
+       async function handleSearch(manual = null) {
             const w = (manual || document.getElementById('wordInput').value).trim().toLowerCase();
             if(!w || !userPath) return;
             lastWord = w; 
@@ -290,15 +290,11 @@ function login() {
             document.getElementById('results').style.display = 'none'; 
             document.getElementById('loader').style.display = 'block';
             try {
-                // Fix: Added proper JSON headers for Google's strict live servers
-                const tr = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ q: w, target: 'ar', format: 'text' }) 
-                });
+                // FIX: Switched to a GET request to bypass the CORS Preflight block
+                const trUrl = `https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}&q=${w}&target=ar`;
+                const tr = await fetch(trUrl);
                 const trD = await tr.json();
                 
-                // Fix: Intercept Google API restriction errors before they crash the render
                 if (trD.error) throw new Error("Google API: " + trD.error.message);
 
                 const [d, t, r] = await Promise.all([ 
@@ -312,7 +308,6 @@ function login() {
                 render(data); updateStarUI();
             } catch (e) { 
                 console.error(e); 
-                // Fix: Force the browser to show us exactly what failed!
                 alert("Search Interrupted: " + e.message); 
             } finally { 
                 document.getElementById('loader').style.display = 'none'; 
