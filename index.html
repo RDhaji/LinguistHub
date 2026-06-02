@@ -164,7 +164,9 @@
         <div class="content-wrapper">
             <div class="search-container">
                 <div class="search-wrapper">
-                    <input type="text" id="wordInput" placeholder="Analyze word..." onkeypress="if(event.key === 'Enter') handleSearch()" oninput="toggleClearBtn()">
+                    
+                    <input type="text" id="wordInput" name="dictionarySearch" autocomplete="off" placeholder="Analyze word..." onkeypress="if(event.key === 'Enter') handleSearch()" oninput="toggleClearBtn()">
+                    
                     <span id="clearBtn" class="clear-search" onclick="clearSearchInput()">✕</span>
                 </div>
                 <button class="btn-search" onclick="handleSearch()">SEARCH</button>
@@ -288,17 +290,33 @@ function login() {
             document.getElementById('results').style.display = 'none'; 
             document.getElementById('loader').style.display = 'block';
             try {
-                const tr = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, { method: 'POST', body: JSON.stringify({ q: w, target: 'ar', format: 'text' }) });
+                // Fix: Added proper JSON headers for Google's strict live servers
+                const tr = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ q: w, target: 'ar', format: 'text' }) 
+                });
                 const trD = await tr.json();
+                
+                // Fix: Intercept Google API restriction errors before they crash the render
+                if (trD.error) throw new Error("Google API: " + trD.error.message);
+
                 const [d, t, r] = await Promise.all([ 
                     fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${w}?key=${DICT_KEY}`), 
                     fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${w}?key=${THES_KEY}`),
                     fetch(`https://api.datamuse.com/words?rel_rhy=${w}&max=6`)
                 ]);
+                
                 const data = { word: w, trans: trD.data.translations[0].translatedText, dict: await d.json(), thes: await t.json(), rhymes: await r.json() };
                 db.ref(userPath + '/history/' + w).set({ timestamp: Date.now(), data: data });
                 render(data); updateStarUI();
-            } catch (e) { console.error(e); } finally { document.getElementById('loader').style.display = 'none'; }
+            } catch (e) { 
+                console.error(e); 
+                // Fix: Force the browser to show us exactly what failed!
+                alert("Search Interrupted: " + e.message); 
+            } finally { 
+                document.getElementById('loader').style.display = 'none'; 
+            }
         }
 
         // 5. RENDERER
