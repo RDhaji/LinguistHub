@@ -164,7 +164,9 @@
         <div class="content-wrapper">
             <div class="search-container">
                 <div class="search-wrapper">
-                    <input type="text" id="wordInput" placeholder="Analyze word..." onkeypress="if(event.key === 'Enter') handleSearch()" oninput="toggleClearBtn()">
+                    
+                    <input type="text" id="wordInput" name="dictionarySearch" autocomplete="off" placeholder="Analyze word..." onkeypress="if(event.key === 'Enter') handleSearch()" oninput="toggleClearBtn()">
+                    
                     <span id="clearBtn" class="clear-search" onclick="clearSearchInput()">✕</span>
                 </div>
                 <button class="btn-search" onclick="handleSearch()">SEARCH</button>
@@ -251,7 +253,7 @@
             input.focus();
         }
 
-        // 3. DATA SYNC
+      // 3. DATA SYNC
         firebase.auth().onAuthStateChanged(user => {
             if (user) {
                 document.getElementById('login-overlay').style.display = 'none';
@@ -273,13 +275,14 @@
 
         function login() {
             const provider = new firebase.auth.GoogleAuthProvider();
-            firebase.auth().signInWithPopup(provider).catch(e => {
-                firebase.auth().signInWithRedirect(provider);
+            firebase.auth().signInWithPopup(provider).catch(error => {
+                console.error(error);
+                alert("Login Blocked: " + error.message + "\n\nTip: If you are using a strict pop-up blocker, please allow pop-ups for this site to log in.");
             });
         }
 
         // 4. ENGINE
-        async function handleSearch(manual = null) {
+       async function handleSearch(manual = null) {
             const w = (manual || document.getElementById('wordInput').value).trim().toLowerCase();
             if(!w || !userPath) return;
             lastWord = w; 
@@ -288,33 +291,41 @@
             document.getElementById('results').style.display = 'none'; 
             document.getElementById('loader').style.display = 'block';
             try {
-                const tr = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, { method: 'POST', body: JSON.stringify({ q: w, target: 'ar', format: 'text' }) });
+                // FIX: Switched to a GET request to bypass the CORS Preflight block
+                const trUrl = `https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}&q=${w}&target=ar`;
+                const tr = await fetch(trUrl);
                 const trD = await tr.json();
+                
+                if (trD.error) throw new Error("Google API: " + trD.error.message);
+
                 const [d, t, r] = await Promise.all([ 
                     fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${w}?key=${DICT_KEY}`), 
                     fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${w}?key=${THES_KEY}`),
                     fetch(`https://api.datamuse.com/words?rel_rhy=${w}&max=6`)
                 ]);
+                
                 const data = { word: w, trans: trD.data.translations[0].translatedText, dict: await d.json(), thes: await t.json(), rhymes: await r.json() };
                 db.ref(userPath + '/history/' + w).set({ timestamp: Date.now(), data: data });
                 render(data); updateStarUI();
-            } catch (e) { console.error(e); } finally { document.getElementById('loader').style.display = 'none'; }
+            } catch (e) { 
+                console.error(e); 
+                alert("Search Interrupted: " + e.message); 
+            } finally { 
+                document.getElementById('loader').style.display = 'none'; 
+            }
         }
 
         // 5. RENDERER
         function render(data) {
-            // 1. Find exact match by stripping asterisks, or fallback to the first entry
             const d = data.dict.find(entry => entry.hwi?.hw?.replace(/\*/g, '') === data.word) || data.dict[0];
             
             document.getElementById('results').style.display = 'block';
             document.getElementById('r-word').innerText = data.word;
             document.getElementById('r-trans').innerText = data.trans;
             
-            // 2. Determine precise Part of Speech & Cross References
             let displayPos = d ? (d.fl || "word") : "word";
             let cxInfo = ""; 
             
-            // A. Check UROS (Undefined Run-Ons) for derivatives
             if (d && d.uros) {
                 const runOn = d.uros.find(uro => uro.ure?.replace(/\*/g, '') === data.word);
                 if (runOn && runOn.fl) {
@@ -322,7 +333,6 @@
                 }
             }
             
-            // B. Check CXS (Cognate Cross-References) for conjugations/plurals
             if (d && d.cxs) {
                 const cxTarget = d.cxs[0];
                 if (cxTarget.cxl && cxTarget.cxtis && cxTarget.cxtis[0]) {
@@ -334,7 +344,6 @@
             
             document.getElementById('r-pos').innerText = displayPos + cxInfo;
             
-            // 3. Safely handle Definitions
             let definition = "Definition not available.";
             if (d?.shortdef && d.shortdef.length > 0) {
                 definition = d.shortdef[0];
@@ -345,13 +354,11 @@
             }
             document.getElementById('r-def').innerText = definition;
             
-            // 4. Archive details
             document.getElementById('r-syll').innerText = d?.hwi?.hw?.replace(/\*/g, '·') || data.word;
             document.getElementById('r-etym').innerText = d?.et ? d.et[0][1].replace(/\{.*?\}/g, '') : "Origin tracking preserved.";
             
             document.getElementById('r-rhyme').innerHTML = data.rhymes.map(r => `<span class="rhyme-item" onclick="handleSearch('${r.word}')">${r.word}</span>`).join('');
             
-            // Synonyms Logic
             const synContainer = document.getElementById('r-syns');
             synContainer.innerHTML = "";
             if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.syns) {
@@ -367,7 +374,6 @@
                 synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
             }
 
-            // POS Grid logic
             const grid = document.getElementById('r-family-grid'); 
             grid.innerHTML = "";
             let groups = { noun: [], adjective: [], verb: [] };
@@ -389,40 +395,43 @@
                 }
             }
 
-            // Update Badge Counts
             document.getElementById('history-count').innerText = history.length;
             document.getElementById('pinned-count').innerText = bookmarks.length;
         }
 
-        // 6. FEATURES
-        
-        function speak(l) {
-            if (!lastWord) return;
+        // 6. FEATURES: Cloud TTS API integration
+        async function speak(l) {
+            if (!lastWord || l === 'ar') return;
 
-            // Try Google Translate's official audio service first
-            const googleAudioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en-US&q=${encodeURIComponent(lastWord)}`;
-            const audio = new Audio(googleAudioUrl);
+            const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_KEY}`;
+            
+            const requestBody = {
+                input: { text: lastWord },
+                voice: { languageCode: 'en-US', name: 'en-US-Journey-D' },
+                audioConfig: { audioEncoding: 'MP3', speakingRate: 0.9 }
+            };
 
-            audio.play().catch(error => {
-                console.log("Google Service offline, falling back to browser voice.");
+            try {
+                const response = await fetch(ttsUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
                 
-                // Fallback to offline built-in synthesis
-                const u = new SpeechSynthesisUtterance(lastWord);
-                const voices = window.speechSynthesis.getVoices();
-                
-                // Explicitly hunt for Chrome's built-in Google voice as priority
-                const googleVoice = voices.find(v => v.name === 'Google US English');
-                const defaultUS = voices.find(v => v.lang === 'en-US' || v.lang === 'en_US');
-                
-                if (googleVoice) {
-                    u.voice = googleVoice;
-                } else if (defaultUS) {
-                    u.voice = defaultUS;
+                if (data.error) {
+                    console.error("API Error:", data.error.message);
+                    alert("TTS Error: Did you enable the API in Google Cloud Console?");
+                    return;
                 }
+
+                const audio = new Audio("data:audio/mp3;base64," + data.audioContent);
+                audio.play();
                 
-                u.lang = 'en-US';
-                window.speechSynthesis.speak(u);
-            });
+            } catch (error) {
+                console.error("Audio generation failed:", error);
+            }
         }
 
         function toggleBookmark() { 
