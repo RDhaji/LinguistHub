@@ -253,7 +253,7 @@
             input.focus();
         }
 
-        // 3. DATA SYNC
+      // 3. DATA SYNC
         firebase.auth().onAuthStateChanged(user => {
             if (user) {
                 document.getElementById('login-overlay').style.display = 'none';
@@ -272,18 +272,13 @@
                 document.getElementById('login-overlay').style.display = 'flex';
             }
         });
-        
-function login() {
+
+        function login() {
             const provider = new firebase.auth.GoogleAuthProvider();
-            
-            // Reverting to Popup to bypass the strict cross-domain cookie blocks
             firebase.auth().signInWithPopup(provider).catch(error => {
                 console.error(error);
                 alert("Login Blocked: " + error.message + "\n\nTip: If you are using a strict pop-up blocker, please allow pop-ups for this site to log in.");
             });
-        }
-        
-        
         }
 
         // 4. ENGINE
