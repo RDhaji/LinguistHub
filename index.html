@@ -99,9 +99,11 @@
             line-height: 1.2;
         }
 
-        /* Synonyms & Tags */
-        .synonym-item { display: inline-block; margin: 2px; padding: 4px 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 0.75rem; font-weight: 700; color: #b45309; cursor: pointer; }
-        [data-theme="dark"] .synonym-item { background: #451a03; border-color: #78350f; color: #fcd34d; }
+      /* Synonyms, Antonyms & Tags */
+        .synonym-item { display: inline-block; margin: 2px; padding: 4px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; font-size: 0.7rem; font-weight: 800; color: var(--accent); cursor: pointer; }
+
+        .antonym-item { display: inline-block; margin: 2px; padding: 4px 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 0.75rem; font-weight: 700; color: #b45309; cursor: pointer; }
+        [data-theme="dark"] .antonym-item { background: #451a03; border-color: #78350f; color: #fcd34d; }
 
         .family-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 15px; }
         .family-square { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 10px; min-height: 70px; }
@@ -205,10 +207,10 @@
                                 <p id="r-etym" style="font-size:0.7rem; margin-top:4px; line-height:1.3; opacity:0.8; font-style: italic;"></p>
                             </div>
                             <div style="flex: 1;">
-                                <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Rhyme Index</h4>
-                                <div id="r-rhyme" style="margin-bottom: 12px;"></div>
-                                <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Synonyms</h4>
-                                <div id="r-syns"></div>
+                         <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Synonyms</h4>
+                          <div id="r-syns" style="margin-bottom: 12px;"></div>
+                          <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Antonyms</h4>
+                              <div id="r-ants"></div>
                             </div>
                         </div>
                     </div>
@@ -281,7 +283,7 @@
             });
         }
 
-        // 4. ENGINE
+       // 4. ENGINE
        async function handleSearch(manual = null) {
             const w = (manual || document.getElementById('wordInput').value).trim().toLowerCase();
             if(!w || !userPath) return;
@@ -290,6 +292,7 @@
             toggleClearBtn();
             document.getElementById('results').style.display = 'none'; 
             document.getElementById('loader').style.display = 'block';
+            
             try {
                 // FIX: Switched to a GET request to bypass the CORS Preflight block
                 const trUrl = `https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}&q=${w}&target=ar`;
@@ -298,15 +301,20 @@
                 
                 if (trD.error) throw new Error("Google API: " + trD.error.message);
 
-                const [d, t, r] = await Promise.all([ 
+                const [d, t] = await Promise.all([ 
                     fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${w}?key=${DICT_KEY}`), 
-                    fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${w}?key=${THES_KEY}`),
-                    fetch(`https://api.datamuse.com/words?rel_rhy=${w}&max=6`)
+                    fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${w}?key=${THES_KEY}`)
                 ]);
                 
-                const data = { word: w, trans: trD.data.translations[0].translatedText, dict: await d.json(), thes: await t.json(), rhymes: await r.json() };
+                const data = { 
+                    word: w, 
+                    trans: trD.data.translations[0].translatedText, 
+                    dict: await d.json(), 
+                    thes: await t.json() 
+                };
                 db.ref(userPath + '/history/' + w).set({ timestamp: Date.now(), data: data });
-                render(data); updateStarUI();
+                render(data); 
+                updateStarUI();
             } catch (e) { 
                 console.error(e); 
                 alert("Search Interrupted: " + e.message); 
@@ -357,23 +365,34 @@
             document.getElementById('r-syll').innerText = d?.hwi?.hw?.replace(/\*/g, '·') || data.word;
             document.getElementById('r-etym').innerText = d?.et ? d.et[0][1].replace(/\{.*?\}/g, '') : "Origin tracking preserved.";
             
-            document.getElementById('r-rhyme').innerHTML = data.rhymes.map(r => `<span class="rhyme-item" onclick="handleSearch('${r.word}')">${r.word}</span>`).join('');
-            
+            // SYNONYMS (Updated to use the old "Rhyme Index" mapping and style)
             const synContainer = document.getElementById('r-syns');
-            synContainer.innerHTML = "";
             if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.syns) {
                 const synList = data.thes[0].meta.syns[0].slice(0, 10); 
-                synList.forEach(syn => {
-                    const span = document.createElement('span');
-                    span.className = 'synonym-item';
-                    span.innerText = syn;
-                    span.onclick = () => handleSearch(syn);
-                    synContainer.appendChild(span);
-                });
+                synContainer.innerHTML = synList.map(syn => `<span class="rhyme-item" onclick="handleSearch('${syn}')">${syn}</span>`).join('');
             } else {
                 synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
             }
 
+            // ANTONYMS (Added using the original "Synonyms" style)
+            const antContainer = document.getElementById('r-ants'); // Make sure <div id="r-ants"></div> exists in your HTML
+            if (antContainer) {
+                antContainer.innerHTML = "";
+                if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.ants) {
+                    const antList = data.thes[0].meta.ants[0].slice(0, 10); 
+                    antList.forEach(ant => {
+                        const span = document.createElement('span');
+                        span.className = 'synonym-item';
+                        span.innerText = ant;
+                        span.onclick = () => handleSearch(ant);
+                        antContainer.appendChild(span);
+                    });
+                } else {
+                    antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in archive.</span>";
+                }
+            }
+
+            // FAMILY GRID
             const grid = document.getElementById('r-family-grid'); 
             grid.innerHTML = "";
             let groups = { noun: [], adjective: [], verb: [] };
@@ -398,6 +417,8 @@
             document.getElementById('history-count').innerText = history.length;
             document.getElementById('pinned-count').innerText = bookmarks.length;
         }
+ 
+        
 
         // 6. FEATURES: Cloud TTS API integration
         async function speak(l) {
