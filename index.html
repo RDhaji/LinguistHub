@@ -103,7 +103,6 @@
         .synonym-item { display: inline-block; margin: 2px; padding: 4px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; font-size: 0.7rem; font-weight: 800; color: var(--accent); cursor: pointer; }
 
         .antonym-item { display: inline-block; margin: 2px; padding: 4px 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 0.75rem; font-weight: 700; color: #b45309; cursor: pointer; }
-        [data-theme="dark"] .antonym-item { background: #451a03; border-color: #78350f; color: #fcd34d; }
 
         .family-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 15px; }
         .family-square { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 10px; min-height: 70px; }
@@ -374,15 +373,19 @@
                 synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
             }
 
-            // ANTONYMS (Added using the original "Synonyms" style)
-            const antContainer = document.getElementById('r-ants'); // Make sure <div id="r-ants"></div> exists in your HTML
+            
+            // ANTONYMS (Added using the yellowish "antonym-item" style)
+            const antContainer = document.getElementById('r-ants'
+
+
+            ); 
             if (antContainer) {
                 antContainer.innerHTML = "";
                 if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.ants) {
                     const antList = data.thes[0].meta.ants[0].slice(0, 10); 
                     antList.forEach(ant => {
                         const span = document.createElement('span');
-                        span.className = 'synonym-item';
+                        span.className = 'antonym-item'; // FIX: Switched to your yellowish CSS class!
                         span.innerText = ant;
                         span.onclick = () => handleSearch(ant);
                         antContainer.appendChild(span);
@@ -428,7 +431,10 @@
             
             const requestBody = {
                 input: { text: lastWord },
-                voice: { languageCode: 'en-US', name: 'en-US-Journey-D' },
+                voice: {
+                    languageCode: "en-US",
+                    name: "en-US-Chirp3-HD-Laomedeia"
+                },
                 audioConfig: { audioEncoding: 'MP3', speakingRate: 0.9 }
             };
 
