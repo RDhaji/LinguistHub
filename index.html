@@ -115,6 +115,7 @@
         .loader { display: none; text-align: center; padding: 20px; font-weight: 900; font-size: 1rem; color: var(--accent); letter-spacing: 5px; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
         
+        
         /* Sidebar Count Badges */
         #history-count, #pinned-count {
             font-size: 0.65rem; 
@@ -136,6 +137,61 @@
         #pinned-count { background-color: rgba(245, 158, 11, 0.15); color: #d97706; }
         [data-theme="dark"] #pinned-count { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
       
+        /* MORPHOLOGICAL MATRIX SCHEDULE */
+    .matrix-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    background: var(--bg);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    margin-top: 20px;
+    }
+
+    .matrix-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--card);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .matrix-header {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--text-main);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 4px;
+    width: 100%;
+    text-align: center;
+    }
+
+    .matrix-word {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    padding: 4px 0;
+    cursor: pointer;
+    transition: color 0.2s;
+    }
+
+    .matrix-word:hover {
+    color: #b45309; /* Matches your amber highlight */
+    }
+
+    .matrix-empty {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    opacity: 0.5;
+    font-style: italic;
+    }
+
     </style>
 </head>
 <body data-theme="light">
@@ -210,13 +266,26 @@
                           <div id="r-syns" style="margin-bottom: 12px;"></div>
                           <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Antonyms</h4>
                               <div id="r-ants"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
+                              
+                           <div class="matrix-container" id="morph-matrix" style="display: none;">
+                             <div class="matrix-column">
+                               <div class="matrix-header">Noun</div>
+                               <div id="col-noun"></div>
+                             </div>
+                             <div class="matrix-column">
+                               <div class="matrix-header">Verb</div>
+                               <div id="col-verb"></div>
+                             </div>
+                             <div class="matrix-column">
+                               <div class="matrix-header">Adjective</div>
+                               <div id="col-adjective"></div>
+                             </div>
+                             <div class="matrix-column">
+                                <div class="matrix-header">Adverb</div>
+                                <div id="col-adverb"></div>
+                             </div>
+                           </div>
+                        </div> </div> </div> </div> </div> </div> </main>
 
     <script>
         // 1. CONFIGURATION
@@ -228,8 +297,9 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        const DICT_KEY = "7c14969b-2038-4024-ade3-ad9680fd94ff";
-        const THES_KEY = "9e966fec-f0d8-497c-97f3-dd9938d108a0";
+        // Delete DICT_KEY and THES_KEY, and add WORDS_API_KEY
+        const WORDS_API_KEY = "242b9f742fmsh60139fea9266dd6p1d0d10jsnc099683877b9";
+
         const GOOGLE_KEY = "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc";
 
         let history = [], bookmarks = [], lastWord = "", lastTrans = "", currentTab = 'history', userPath = "";
@@ -282,141 +352,164 @@
             });
         }
 
-       // 4. ENGINE
-       async function handleSearch(manual = null) {
-            const w = (manual || document.getElementById('wordInput').value).trim().toLowerCase();
-            if(!w || !userPath) return;
-            lastWord = w; 
-            document.getElementById('wordInput').value = w;
-            toggleClearBtn();
-            document.getElementById('results').style.display = 'none'; 
-            document.getElementById('loader').style.display = 'block';
-            
-            try {
-                // FIX: Switched to a GET request to bypass the CORS Preflight block
-                const trUrl = `https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}&q=${w}&target=ar`;
-                const tr = await fetch(trUrl);
-                const trD = await tr.json();
-                
-                if (trD.error) throw new Error("Google API: " + trD.error.message);
+      
+          
 
-                const [d, t] = await Promise.all([ 
-                    fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${w}?key=${DICT_KEY}`), 
-                    fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${w}?key=${THES_KEY}`)
-                ]);
+     async function handleSearch(searchWord) {
+            // Grab word from input or clicked tag
+            const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
+            if (!word) return;
+
+            // UI Reset & Syncing
+            lastWord = word;
+            document.getElementById('wordInput').value = word;
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('clearBtn').style.display = 'block';
+
+            try {
+                // 1. Fetch WordsAPI Data
+                const wordsResponse = await fetch(`https://wordsapiv1.p.rapidapi.com/words/${word}`, {
+                    method: "GET",
+                    headers: {
+                        "x-rapidapi-key": "242b9f742fmsh60139fea9266dd6p1d0d10jsnc099683877b9",
+                        "x-rapidapi-host": "wordsapiv1.p.rapidapi.com"
+                    }
+                });
+                const data = await wordsResponse.json();
+
+                // 2. Fetch Google Translate Data (Arabic)
+                const transResponse = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ q: word, target: 'ar' })
+                });
+                const transData = await transResponse.json();
+
+                document.getElementById('loader').style.display = 'none';
+
+                if (!data.results) {
+                    alert("Word not found in archive.");
+                    return;
+                }
+
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('r-word').innerText = word;
+                document.getElementById('r-trans').innerText = transData.data.translations[0].translatedText;
                 
-                const data = { 
-                    word: w, 
-                    trans: trD.data.translations[0].translatedText, 
-                    dict: await d.json(), 
-                    thes: await t.json() 
-                };
-                db.ref(userPath + '/history/' + w).set({ timestamp: Date.now(), data: data });
-                render(data); 
+                // Syllables
+                if (data.syllables && data.syllables.list) {
+                    document.getElementById('r-syll').innerText = data.syllables.list.join('·');
+                } else {
+                    document.getElementById('r-syll').innerText = word;
+                }
+
+                // Data Buckets
+                let allSynonyms = new Set();
+                let allAntonyms = new Set();
+                let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
+
+                // Render Definitions & Extract Data
+                const defContainer = document.getElementById('definitions'); 
+                if (defContainer) {
+                    defContainer.innerHTML = data.results.map((entry, index) => {
+                        
+                        // Collect Synonyms & Antonyms
+                        if (entry.synonyms) entry.synonyms.forEach(s => allSynonyms.add(s));
+                        if (entry.antonyms) entry.antonyms.forEach(a => allAntonyms.add(a));
+
+                        // Put base word in Matrix
+                        const pos = entry.partOfSpeech;
+                        if (pos && matrix[pos] !== undefined) matrix[pos].add(word);
+                        if (index === 0 && pos) document.getElementById('r-pos').innerText = pos;
+
+                        // Hunt for Relatives
+                        if (entry.derivationallyRelatedForms) {
+                            entry.derivationallyRelatedForms.forEach(derivedWord => {
+                                sortIntoMatrix(derivedWord, matrix);
+                            });
+                        }
+
+                        // Format Definition HTML
+                        const displayPos = pos ? `<i>${pos}</i>` : '';
+                        return `<div style="margin-bottom: 8px; font-size: 0.9rem; color: var(--text-main);">
+                                    <strong>${index + 1}.</strong> <span style="color: var(--text-muted);">${displayPos}</span> ${entry.definition}
+                                </div>`;
+                    }).join('');
+                }
+
+                // Render Synonyms 
+                const synContainer = document.getElementById('r-syns');
+                if (synContainer && allSynonyms.size > 0) {
+                    synContainer.innerHTML = Array.from(allSynonyms).slice(0, 10)
+                        .map(syn => `<span class="synonym-item" onclick="handleSearch('${syn}')">${syn}</span>`).join('');
+                } else if (synContainer) {
+                    synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
+                }
+
+                // Render Antonyms 
+                const antContainer = document.getElementById('r-ants');
+                if (antContainer && allAntonyms.size > 0) {
+                    antContainer.innerHTML = Array.from(allAntonyms).slice(0, 10)
+                        .map(ant => `<span class="antonym-item" onclick="handleSearch('${ant}')">${ant}</span>`).join('');
+                } else if (antContainer) {
+                    antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in archive.</span>";
+                }
+
+                // Fire Matrix
+                renderMatrix(matrix);
+                
+                // Update History
+                if (!history.includes(word)) {
+                    history.unshift(word);
+                    db.ref(userPath + '/history/' + word).set({ timestamp: Date.now() });
+                }
+                updateSidebar();
                 updateStarUI();
-            } catch (e) { 
-                console.error(e); 
-                alert("Search Interrupted: " + e.message); 
-            } finally { 
-                document.getElementById('loader').style.display = 'none'; 
+
+            } catch (error) {
+                console.error("Search Engine Error:", error);
+                document.getElementById('loader').style.display = 'none';
             }
         }
 
-        // 5. RENDERER
-        function render(data) {
-            const d = data.dict.find(entry => entry.hwi?.hw?.replace(/\*/g, '') === data.word) || data.dict[0];
-            
-            document.getElementById('results').style.display = 'block';
-            document.getElementById('r-word').innerText = data.word;
-            document.getElementById('r-trans').innerText = data.trans;
-            
-            let displayPos = d ? (d.fl || "word") : "word";
-            let cxInfo = ""; 
-            
-            if (d && d.uros) {
-                const runOn = d.uros.find(uro => uro.ure?.replace(/\*/g, '') === data.word);
-                if (runOn && runOn.fl) {
-                    displayPos = runOn.fl; 
-                }
-            }
-            
-            if (d && d.cxs) {
-                const cxTarget = d.cxs[0];
-                if (cxTarget.cxl && cxTarget.cxtis && cxTarget.cxtis[0]) {
-                    const relation = cxTarget.cxl.replace(' of', ''); 
-                    const baseWord = cxTarget.cxtis[0].cxt.replace(/\*/g, '');
-                    cxInfo = ` — ${relation}: ${baseWord}`;
-                }
-            }
-            
-            document.getElementById('r-pos').innerText = displayPos + cxInfo;
-            
-            let definition = "Definition not available.";
-            if (d?.shortdef && d.shortdef.length > 0) {
-                definition = d.shortdef[0];
-            } else if (data.thes && data.thes[0]?.shortdef) {
-                definition = data.thes[0].shortdef[0];
-            } else if (d?.cxs) {
-                definition = `Inflection. Please search the base word: ${d.cxs[0].cxtis[0].cxt.replace(/\*/g, '')}`;
-            }
-            document.getElementById('r-def').innerText = definition;
-            
-            document.getElementById('r-syll').innerText = d?.hwi?.hw?.replace(/\*/g, '·') || data.word;
-            document.getElementById('r-etym').innerText = d?.et ? d.et[0][1].replace(/\{.*?\}/g, '') : "Origin tracking preserved.";
-            
-          // SYNONYMS 
-            const synContainer = document.getElementById('r-syns');
-            if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.syns && data.thes[0].meta.syns[0]) {
-                // FIX: Added '&& data.thes[0].meta.syns[0]' to ensure the array exists before slicing
-                const synList = data.thes[0].meta.syns[0].slice(0, 10); 
-                synContainer.innerHTML = synList.map(syn => `<span class="rhyme-item" onclick="handleSearch('${syn}')">${syn}</span>`).join('');
+        // --- THE SUFFIX SORTING ALGORITHM ---
+        function sortIntoMatrix(word, matrix) {
+            if (word.endsWith('ly') && !word.endsWith('ply')) {
+                matrix.adverb.add(word);
+            } else if (word.match(/(tion|sion|ment|ness|ity|ism|ist|er|or|ance|ence|ship)$/)) {
+                matrix.noun.add(word);
+            } else if (word.match(/(ate|ify|ize|ise|en)$/)) {
+                matrix.verb.add(word);
+            } else if (word.match(/(ic|al|ous|ive|able|ible|ful|less|y)$/)) {
+                matrix.adjective.add(word);
             } else {
-                synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
+                matrix.noun.add(word);
             }
+        }
 
-            // ANTONYMS 
-            const antContainer = document.getElementById('r-ants'); 
-            if (antContainer) {
-                antContainer.innerHTML = "";
-                if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.ants && data.thes[0].meta.ants[0]) {
-                    // FIX: Added '&& data.thes[0].meta.ants[0]' to ensure the array exists before slicing
-                    const antList = data.thes[0].meta.ants[0].slice(0, 10); 
-                    antList.forEach(ant => {
-                        const span = document.createElement('span');
-                        span.className = 'antonym-item'; 
-                        span.innerText = ant;
-                        span.onclick = () => handleSearch(ant);
-                        antContainer.appendChild(span);
+        // --- MATRIX RENDERER ---
+        function renderMatrix(matrix) {
+            document.getElementById('morph-matrix').style.display = 'grid';
+
+            const columns = ['noun', 'verb', 'adjective', 'adverb'];
+            columns.forEach(col => {
+                const container = document.getElementById(`col-${col}`);
+                if (!container) return; 
+                container.innerHTML = ""; 
+
+                if (matrix[col].size > 0) {
+                    Array.from(matrix[col]).forEach(w => {
+                        const div = document.createElement('div');
+                        div.className = 'matrix-word';
+                        div.innerText = w;
+                        div.onclick = () => handleSearch(w); 
+                        container.appendChild(div);
                     });
                 } else {
-                    antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in archive.</span>";
+                    container.innerHTML = `<span class="matrix-empty">-</span>`;
                 }
-            }
-
-            // FAMILY GRID
-            const grid = document.getElementById('r-family-grid'); 
-            grid.innerHTML = "";
-            let groups = { noun: [], adjective: [], verb: [] };
-            if(Array.isArray(data.dict)) {
-                data.dict.forEach(entry => {
-                    const head = entry.hwi?.hw?.replace(/\*/g, '').toLowerCase();
-                    const type = (entry.fl || "related").toLowerCase();
-                    if(head && head !== data.word && groups[type]) groups[type].push(head);
-                });
-            }
-            for (let [type, members] of Object.entries(groups)) {
-                if (members.length > 0) {
-                    const sq = document.createElement('div'); sq.className = 'family-square';
-                    sq.innerHTML = `<span style="font-size:0.65rem; font-weight:900; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:12px;">${type}</span>`;
-                    [...new Set(members)].slice(0, 6).forEach(m => {
-                        const t = document.createElement('span'); t.className = 'tag'; t.innerText = m; t.onclick = () => handleSearch(m); sq.appendChild(t);
-                    });
-                    grid.appendChild(sq);
-                }
-            }
-
-            document.getElementById('history-count').innerText = history.length;
-            document.getElementById('pinned-count').innerText = bookmarks.length;
+            });
         }
  
         
@@ -425,8 +518,7 @@
         async function speak(l) {
             if (!lastWord || l === 'ar') return;
 
-            const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_KEY}`;
-            
+const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_KEY}`;            
             const requestBody = {
                 input: { text: lastWord },
                 voice: {
