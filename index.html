@@ -301,6 +301,8 @@
         const WORDS_API_KEY = "242b9f742fmsh60139fea9266dd6p1d0d10jsnc099683877b9";
 
         const GOOGLE_KEY = "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc";
+        const MW_DICT_KEY = "7c14969b-2038-4024-ade3-ad9680fd94ff";
+        const MW_THES_KEY = "9e966fec-f0d8-497c-97f3-dd9938d108a0";
 
         let history = [], bookmarks = [], lastWord = "", currentTab = 'history', userPath = "";
 
@@ -352,152 +354,222 @@
             });
         }
 
-      
-          
+      async function handleSearch(searchWord) {
+    const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
+    if (!word) return;
 
-     async function handleSearch(searchWord) {
-            // Grab word from input or clicked tag
-            const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
-            if (!word) return;
+    lastWord = word;
+    document.getElementById('wordInput').value = word;
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('clearBtn').style.display = 'block';
 
-            // UI Reset & Syncing
-            lastWord = word;
-            document.getElementById('wordInput').value = word;
-            document.getElementById('loader').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
-            document.getElementById('clearBtn').style.display = 'block';
+    try {
+        // ALL 4 API CALLS IN PARALLEL
+        const [wordsResponse, transResponse, mwDictResponse, mwThesResponse] = await Promise.all([
+            fetch(`https://wordsapiv1.p.rapidapi.com/words/${word}`, {
+                method: "GET",
+                headers: {
+                    "x-rapidapi-key": WORDS_API_KEY,
+                    "x-rapidapi-host": "wordsapiv1.p.rapidapi.com"
+                }
+            }),
+            fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ q: word, target: 'ar' })
+            }),
+            fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=7c14969b-2038-4024-ade3-ad9680fd94ff`),
+            fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${word}?key=9e966fec-f0d8-497c-97f3-dd9938d108a0`)
+            fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${MW_DICT_KEY}`),
+            fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${word}?key=${MW_THES_KEY}`)
+        ]);
 
-            try {
-                // 1. Fetch WordsAPI Data
-                const wordsResponse = await fetch(`https://wordsapiv1.p.rapidapi.com/words/${word}`, {
-                    method: "GET",
-                    headers: {
-                        "x-rapidapi-key": WORDS_API_KEY,
-                        "x-rapidapi-host": "wordsapiv1.p.rapidapi.com"
-                    }
+        const [data, transData, mwDict, mwThes] = await Promise.all([
+            wordsResponse.json(),
+            transResponse.json(),
+            mwDictResponse.json(),
+            mwThesResponse.json()
+        ]);
+
+        document.getElementById('loader').style.display = 'none';
+
+        if (!data.results) {
+            alert("Word not found in archive.");
+            return;
+        }
+
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('r-word').innerText = word;
+
+        // Arabic Translation
+        const arabicBox = document.querySelector('.arabic-box');
+        if (transData?.data?.translations?.[0]) {
+            document.getElementById('r-trans').innerText = transData.data.translations[0].translatedText;
+            arabicBox.style.display = 'block';
+        } else {
+            arabicBox.style.display = 'none';
+        }
+
+        // Syllables
+        if (data.syllables && data.syllables.list) {
+            document.getElementById('r-syll').innerText = data.syllables.list.join('·');
+        } else {
+            document.getElementById('r-syll').innerText = word;
+        }
+
+        // Data Buckets
+        let allSynonyms = new Set();
+        let allAntonyms = new Set();
+        let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
+
+        // --- FIX 1: Filter definitions to primary POS only, max 3 ---
+        const primaryPos = data.results[0].partOfSpeech;
+        document.getElementById('r-pos').innerText = primaryPos || '';
+
+        const filteredResults = data.results
+            .filter(entry => entry.partOfSpeech === primaryPos)
+            .slice(0, 3);
+
+        // Collect synonyms/antonyms and matrix from WordsAPI
+        data.results.forEach(entry => {
+            if (entry.synonyms) entry.synonyms.forEach(s => allSynonyms.add(s));
+            if (entry.antonyms) entry.antonyms.forEach(a => allAntonyms.add(a));
+            const pos = entry.partOfSpeech;
+            if (pos && matrix[pos] !== undefined) matrix[pos].add(word);
+            if (entry.derivationallyRelatedForms) {
+                entry.derivationallyRelatedForms.forEach(derived => {
+                    sortIntoMatrix(derived.word, matrix);
                 });
-                const data = await wordsResponse.json();
+            }
+        });
 
-                // 2. Fetch Google Translate Data (Arabic)
-                const transResponse = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ q: word, target: 'ar' })
-                });
-                const transData = await transResponse.json();
+        // Render filtered definitions
+        const defContainer = document.getElementById('r-def');
+        if (defContainer) {
+            defContainer.innerHTML = filteredResults.map((entry, index) => {
+                const displayPos = entry.partOfSpeech ? `<i>${entry.partOfSpeech}</i>` : '';
+                return `<div style="margin-bottom: 8px; font-size: 0.9rem; color: var(--text);">
+                            <strong>${index + 1}.</strong> <span style="color: var(--accent);">${displayPos}</span> ${entry.definition}
+                        </div>`;
+            }).join('');
+        }
 
-                document.getElementById('loader').style.display = 'none';
+        // --- FIX 2: Merriam-Webster matrix population ---
+        if (Array.isArray(mwDict)) {
+            mwDict.forEach(entry => {
+                if (typeof entry !== 'object' || !entry.fl) return;
+                const fl = entry.fl.toLowerCase(); // fl = functional label e.g. "adjective"
 
-                if (!data.results) {
-                    alert("Word not found in archive.");
-                    return;
+                // Grab the actual headword (hwi.hw) and clean it
+                const hw = entry.hwi?.hw?.replace(/\*/g, '') || '';
+                if (!hw) return;
+
+                if (fl === 'adjective') matrix.adjective.add(hw);
+                else if (fl === 'adverb') matrix.adverb.add(hw);
+                else if (fl === 'noun') matrix.noun.add(hw);
+                else if (fl === 'verb') matrix.verb.add(hw);
+
+                // Also pull uros (undefined run-ons) — these are derived forms
+                if (entry.uros) {
+                    entry.uros.forEach(uro => {
+                        const uroWord = uro.ure?.replace(/\*/g, '') || '';
+                        const uroFl = uro.fl?.toLowerCase() || '';
+                        if (!uroWord) return;
+                        if (uroFl === 'adjective') matrix.adjective.add(uroWord);
+                        else if (uroFl === 'adverb') matrix.adverb.add(uroWord);
+                        else if (uroFl === 'noun') matrix.noun.add(uroWord);
+                        else if (uroFl === 'verb') matrix.verb.add(uroWord);
+                        else sortIntoMatrix(uroWord, matrix);
+                    });
                 }
-
-                document.getElementById('results').style.display = 'block';
-                document.getElementById('r-word').innerText = word;
-                const arabicBox = document.querySelector('.arabic-box');
-                if (transData?.data?.translations?.[0]) {
-                 document.getElementById('r-trans').innerText = transData.data.translations[0].translatedText;
-                 arabicBox.style.display = 'block';
-                } else {
-                   arabicBox.style.display = 'none';
-                    }             
-                // Syllables
-                if (data.syllables && data.syllables.list) {
-                    document.getElementById('r-syll').innerText = data.syllables.list.join('·');
-                } else {
-                    document.getElementById('r-syll').innerText = word;
-                }
-
-                // Data Buckets
-                let allSynonyms = new Set();
-                let allAntonyms = new Set();
-                let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
-
-                // Render Definitions & Extract Data
-                const defContainer = document.getElementById('r-def'); 
-                if (defContainer) {
-                    defContainer.innerHTML = data.results.map((entry, index) => {
-                        
-                        // Collect Synonyms & Antonyms
-                        if (entry.synonyms) entry.synonyms.forEach(s => allSynonyms.add(s));
-                        if (entry.antonyms) entry.antonyms.forEach(a => allAntonyms.add(a));
-
-                        // Put base word in Matrix
-                        const pos = entry.partOfSpeech;
-                        if (pos && matrix[pos] !== undefined) matrix[pos].add(word);
-                        if (index === 0 && pos) document.getElementById('r-pos').innerText = pos;
-
-                        // Hunt for Relatives
-                        if (entry.derivationallyRelatedForms) {
-                            entry.derivationallyRelatedForms.forEach(derived => {
-                                sortIntoMatrix(derived.word, matrix);
-                            });
-                        }
-
-                        // Format Definition HTML
-                        const displayPos = pos ? `<i>${pos}</i>` : '';
-                        return `<div style="margin-bottom: 8px; font-size: 0.9rem; color: var(--text);">
-                                  <strong>${index + 1}.</strong> <span style="color: var(--accent);">${displayPos}</span> ${entry.definition}
-                                 </div>`;
-                    }).join('');
-                }
-// Populate Word Family Grid
-const familyGrid = document.getElementById('r-family-grid');
-if (familyGrid) {
-    const familyWords = new Set();
-    data.results.forEach(entry => {
-        if (entry.derivationallyRelatedForms) {
-            entry.derivationallyRelatedForms.forEach(derived => {
-                familyWords.add(derived.word); // same .word fix as Bug 1
             });
         }
-    });
 
-    if (familyWords.size > 0) {
-        familyGrid.innerHTML = Array.from(familyWords).map(w => `
-            <div class="family-square">
-                <span class="tag" onclick="handleSearch('${w}')">${w}</span>
-            </div>
-        `).join('');
-    } else {
-        familyGrid.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No related forms found.</span>";
-    }
-}
-                // Render Synonyms 
-                const synContainer = document.getElementById('r-syns');
-                if (synContainer && allSynonyms.size > 0) {
-                    synContainer.innerHTML = Array.from(allSynonyms).slice(0, 10)
-                        .map(syn => `<span class="synonym-item" onclick="handleSearch('${syn}')">${syn}</span>`).join('');
-                } else if (synContainer) {
-                    synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
+        // --- Merriam-Webster Thesaurus: boost synonyms & antonyms ---
+        if (Array.isArray(mwThes)) {
+            mwThes.forEach(entry => {
+                if (typeof entry !== 'object') return;
+                if (entry.def) {
+                    entry.def.forEach(def => {
+                        def.sseq?.forEach(sseq => {
+                            sseq.forEach(sense => {
+                                if (sense[0] === 'sense') {
+                                    sense[1]?.syn_list?.forEach(synList => {
+                                        synList.forEach(syn => {
+                                            if (syn.wd) allSynonyms.add(syn.wd);
+                                        });
+                                    });
+                                    sense[1]?.ant_list?.forEach(antList => {
+                                        antList.forEach(ant => {
+                                            if (ant.wd) allAntonyms.add(ant.wd);
+                                        });
+                                    });
+                                }
+                            });
+                        });
+                    });
                 }
+            });
+        }
 
-                // Render Antonyms 
-                const antContainer = document.getElementById('r-ants');
-                if (antContainer && allAntonyms.size > 0) {
-                    antContainer.innerHTML = Array.from(allAntonyms).slice(0, 10)
-                        .map(ant => `<span class="antonym-item" onclick="handleSearch('${ant}')">${ant}</span>`).join('');
-                } else if (antContainer) {
-                    antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in archive.</span>";
-                }
+        // Render Synonyms
+        const synContainer = document.getElementById('r-syns');
+        if (synContainer && allSynonyms.size > 0) {
+            synContainer.innerHTML = Array.from(allSynonyms).slice(0, 10)
+                .map(syn => `<span class="synonym-item" onclick="handleSearch('${syn}')">${syn}</span>`).join('');
+        } else if (synContainer) {
+            synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
+        }
 
-                // Fire Matrix
-                renderMatrix(matrix);
-                
-                // Update History
-                if (!history.includes(word)) {
-                    history.unshift(word);
-                    db.ref(userPath + '/history/' + word).set({ timestamp: Date.now() });
-                }
-                updateSidebar();
-                updateStarUI();
+        // Render Antonyms
+        const antContainer = document.getElementById('r-ants');
+        if (antContainer && allAntonyms.size > 0) {
+            antContainer.innerHTML = Array.from(allAntonyms).slice(0, 10)
+                .map(ant => `<span class="antonym-item" onclick="handleSearch('${ant}')">${ant}</span>`).join('');
+        } else if (antContainer) {
+            antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in archive.</span>";
+        }
 
-            } catch (error) {
-                console.error("Search Engine Error:", error);
-                document.getElementById('loader').style.display = 'none';
+        // Fire Matrix
+        renderMatrix(matrix);
+
+        // Populate Word Family Grid
+        const familyGrid = document.getElementById('r-family-grid');
+        if (familyGrid) {
+            const familyWords = new Set([
+                ...matrix.noun,
+                ...matrix.verb,
+                ...matrix.adjective,
+                ...matrix.adverb
+            ]);
+            familyWords.delete(word); // remove the searched word itself
+
+            if (familyWords.size > 0) {
+                familyGrid.innerHTML = Array.from(familyWords).map(w => `
+                    <div class="family-square">
+                        <span class="tag" onclick="handleSearch('${w}')">${w}</span>
+                    </div>
+                `).join('');
+            } else {
+                familyGrid.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No related forms found.</span>";
             }
         }
+
+        // Update History
+        if (!history.includes(word)) {
+            history.unshift(word);
+            db.ref(userPath + '/history/' + word).set({ timestamp: Date.now() });
+        }
+        updateSidebar();
+        updateStarUI();
+
+    } catch (error) {
+        console.error("Search Engine Error:", error);
+        document.getElementById('loader').style.display = 'none';
+    }
+}
+     
 
         // --- THE SUFFIX SORTING ALGORITHM ---
         function sortIntoMatrix(word, matrix) {
