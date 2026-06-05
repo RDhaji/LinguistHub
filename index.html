@@ -380,8 +380,8 @@
                 body: JSON.stringify({ q: word, target: 'ar' })
             }),
             fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=7c14969b-2038-4024-ade3-ad9680fd94ff`),
-            fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${word}?key=9e966fec-f0d8-497c-97f3-dd9938d108a0`)
             fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${MW_DICT_KEY}`),
+            fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${word}?key=9e966fec-f0d8-497c-97f3-dd9938d108a0`)
             fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${word}?key=${MW_THES_KEY}`)
         ]);
 
