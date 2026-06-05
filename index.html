@@ -162,7 +162,7 @@
     .matrix-header {
     font-size: 0.8rem;
     font-weight: 800;
-    color: var(--text-main);
+    color: var(--text);
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 10px;
@@ -187,7 +187,7 @@
 
     .matrix-empty {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--text);
     opacity: 0.5;
     font-style: italic;
     }
@@ -302,7 +302,7 @@
 
         const GOOGLE_KEY = "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc";
 
-        let history = [], bookmarks = [], lastWord = "", lastTrans = "", currentTab = 'history', userPath = "";
+        let history = [], bookmarks = [], lastWord = "", currentTab = 'history', userPath = "";
 
         // 2. UI CONTROLLER
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
@@ -372,7 +372,7 @@
                 const wordsResponse = await fetch(`https://wordsapiv1.p.rapidapi.com/words/${word}`, {
                     method: "GET",
                     headers: {
-                        "x-rapidapi-key": "242b9f742fmsh60139fea9266dd6p1d0d10jsnc099683877b9",
+                        "x-rapidapi-key": WORDS_API_KEY,
                         "x-rapidapi-host": "wordsapiv1.p.rapidapi.com"
                     }
                 });
@@ -395,8 +395,13 @@
 
                 document.getElementById('results').style.display = 'block';
                 document.getElementById('r-word').innerText = word;
-                document.getElementById('r-trans').innerText = transData.data.translations[0].translatedText;
-                
+                const arabicBox = document.querySelector('.arabic-box');
+                if (transData?.data?.translations?.[0]) {
+                 document.getElementById('r-trans').innerText = transData.data.translations[0].translatedText;
+                 arabicBox.style.display = 'block';
+                } else {
+                   arabicBox.style.display = 'none';
+                    }             
                 // Syllables
                 if (data.syllables && data.syllables.list) {
                     document.getElementById('r-syll').innerText = data.syllables.list.join('·');
@@ -425,19 +430,40 @@
 
                         // Hunt for Relatives
                         if (entry.derivationallyRelatedForms) {
-                            entry.derivationallyRelatedForms.forEach(derivedWord => {
-                                sortIntoMatrix(derivedWord, matrix);
+                            entry.derivationallyRelatedForms.forEach(derived => {
+                                sortIntoMatrix(derived.word, matrix);
                             });
                         }
 
                         // Format Definition HTML
                         const displayPos = pos ? `<i>${pos}</i>` : '';
-                        return `<div style="margin-bottom: 8px; font-size: 0.9rem; color: var(--text-main);">
-                                    <strong>${index + 1}.</strong> <span style="color: var(--text-muted);">${displayPos}</span> ${entry.definition}
-                                </div>`;
+                        return `<div style="margin-bottom: 8px; font-size: 0.9rem; color: var(--text);">
+                                  <strong>${index + 1}.</strong> <span style="color: var(--accent);">${displayPos}</span> ${entry.definition}
+                                 </div>`;
                     }).join('');
                 }
+// Populate Word Family Grid
+const familyGrid = document.getElementById('r-family-grid');
+if (familyGrid) {
+    const familyWords = new Set();
+    data.results.forEach(entry => {
+        if (entry.derivationallyRelatedForms) {
+            entry.derivationallyRelatedForms.forEach(derived => {
+                familyWords.add(derived.word); // same .word fix as Bug 1
+            });
+        }
+    });
 
+    if (familyWords.size > 0) {
+        familyGrid.innerHTML = Array.from(familyWords).map(w => `
+            <div class="family-square">
+                <span class="tag" onclick="handleSearch('${w}')">${w}</span>
+            </div>
+        `).join('');
+    } else {
+        familyGrid.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No related forms found.</span>";
+    }
+}
                 // Render Synonyms 
                 const synContainer = document.getElementById('r-syns');
                 if (synContainer && allSynonyms.size > 0) {
