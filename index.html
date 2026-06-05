@@ -364,28 +364,26 @@
             document.getElementById('r-syll').innerText = d?.hwi?.hw?.replace(/\*/g, '·') || data.word;
             document.getElementById('r-etym').innerText = d?.et ? d.et[0][1].replace(/\{.*?\}/g, '') : "Origin tracking preserved.";
             
-            // SYNONYMS (Updated to use the old "Rhyme Index" mapping and style)
+          // SYNONYMS 
             const synContainer = document.getElementById('r-syns');
-            if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.syns) {
+            if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.syns && data.thes[0].meta.syns[0]) {
+                // FIX: Added '&& data.thes[0].meta.syns[0]' to ensure the array exists before slicing
                 const synList = data.thes[0].meta.syns[0].slice(0, 10); 
                 synContainer.innerHTML = synList.map(syn => `<span class="rhyme-item" onclick="handleSearch('${syn}')">${syn}</span>`).join('');
             } else {
                 synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
             }
 
-            
-            // ANTONYMS (Added using the yellowish "antonym-item" style)
-            const antContainer = document.getElementById('r-ants'
-
-
-            ); 
+            // ANTONYMS 
+            const antContainer = document.getElementById('r-ants'); 
             if (antContainer) {
                 antContainer.innerHTML = "";
-                if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.ants) {
+                if (data.thes && data.thes[0] && data.thes[0].meta && data.thes[0].meta.ants && data.thes[0].meta.ants[0]) {
+                    // FIX: Added '&& data.thes[0].meta.ants[0]' to ensure the array exists before slicing
                     const antList = data.thes[0].meta.ants[0].slice(0, 10); 
                     antList.forEach(ant => {
                         const span = document.createElement('span');
-                        span.className = 'antonym-item'; // FIX: Switched to your yellowish CSS class!
+                        span.className = 'antonym-item'; 
                         span.innerText = ant;
                         span.onclick = () => handleSearch(ant);
                         antContainer.appendChild(span);
