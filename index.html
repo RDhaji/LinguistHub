@@ -365,7 +365,7 @@
     document.getElementById('clearBtn').style.display = 'block';
 
     try {
-        // ALL 4 API CALLS IN PARALLEL
+        // ALL 4 MAIN API CALLS IN PARALLEL
         const [wordsResponse, transResponse, mwDictResponse, mwThesResponse] = await Promise.all([
             fetch(`https://wordsapiv1.p.rapidapi.com/words/${word}`, {
                 method: "GET",
@@ -392,8 +392,28 @@
 
         document.getElementById('loader').style.display = 'none';
 
+        // --- MISSPELLING HANDLER ---
         if (!data.results) {
-            alert("Word not found in archive.");
+            // WordsAPI returns array of string suggestions for unknown words
+            if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'string') {
+                const suggHTML = data.slice(0, 6).map(s =>
+                    `<span class="synonym-item" style="cursor:pointer;" onclick="handleSearch('${s}')">${s}</span>`
+                ).join(' ');
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('r-word').innerText = word;
+                document.getElementById('r-pos').innerText = 'not found';
+                document.getElementById('r-def').innerHTML = `
+                    <div style="font-size:0.9rem; color:var(--text); opacity:0.7;">
+                        ⚠️ Word not found. Did you mean:<br><br>${suggHTML}
+                    </div>`;
+                document.getElementById('r-family-grid').innerHTML = '';
+                document.getElementById('r-syns').innerHTML = '';
+                document.getElementById('r-ants').innerHTML = '';
+                document.getElementById('morph-matrix').style.display = 'none';
+                document.querySelector('.arabic-box').style.display = 'none';
+            } else {
+                alert("Word not found in archive.");
+            }
             return;
         }
 
@@ -421,23 +441,32 @@
         let allAntonyms = new Set();
         let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
 
-        // --- FIX 1: Filter definitions to primary POS only, max 3 ---
-        const primaryPos = data.results[0].partOfSpeech;
+        // --- PRIMARY POS: Trust MW over WordsAPI ---
+        let primaryPos = data.results[0].partOfSpeech;
+        if (Array.isArray(mwDict)) {
+            const firstMwEntry = mwDict.find(e => typeof e === 'object' && e.fl);
+            if (firstMwEntry) {
+                const mwPos = firstMwEntry.fl.toLowerCase();
+                if (['adjective','adverb','noun','verb'].includes(mwPos)) primaryPos = mwPos;
+            }
+        }
         document.getElementById('r-pos').innerText = primaryPos || '';
 
+        // --- DEFINITIONS: Filter to primary POS, max 3 ---
         const filteredResults = data.results
             .filter(entry => entry.partOfSpeech === primaryPos)
             .slice(0, 3);
 
-        // Collect synonyms/antonyms and matrix from WordsAPI
+        // Collect synonyms/antonyms and base matrix from WordsAPI
         data.results.forEach(entry => {
             if (entry.synonyms) entry.synonyms.forEach(s => allSynonyms.add(s));
             if (entry.antonyms) entry.antonyms.forEach(a => allAntonyms.add(a));
             const pos = entry.partOfSpeech;
             if (pos && matrix[pos] !== undefined) matrix[pos].add(word);
+            // WordsAPI derived forms — primary source
             if (entry.derivationallyRelatedForms) {
                 entry.derivationallyRelatedForms.forEach(derived => {
-                    sortIntoMatrix(derived.word, matrix);
+                    if (derived.word) sortIntoMatrix(derived.word, matrix);
                 });
             }
         });
@@ -453,22 +482,18 @@
             }).join('');
         }
 
-        // --- FIX 2: Merriam-Webster matrix population ---
+        // --- MW DICTIONARY: Fill matrix gaps ---
         if (Array.isArray(mwDict)) {
             mwDict.forEach(entry => {
                 if (typeof entry !== 'object' || !entry.fl) return;
-                const fl = entry.fl.toLowerCase(); // fl = functional label e.g. "adjective"
-
-                // Grab the actual headword (hwi.hw) and clean it
+                const fl = entry.fl.toLowerCase();
                 const hw = entry.hwi?.hw?.replace(/\*/g, '') || '';
                 if (!hw) return;
-
                 if (fl === 'adjective') matrix.adjective.add(hw);
                 else if (fl === 'adverb') matrix.adverb.add(hw);
                 else if (fl === 'noun') matrix.noun.add(hw);
                 else if (fl === 'verb') matrix.verb.add(hw);
-
-                // Also pull uros (undefined run-ons) — these are derived forms
+                // uros = undefined run-ons (derived forms listed under this headword)
                 if (entry.uros) {
                     entry.uros.forEach(uro => {
                         const uroWord = uro.ure?.replace(/\*/g, '') || '';
@@ -484,7 +509,70 @@
             });
         }
 
-        // --- Merriam-Webster Thesaurus: boost synonyms & antonyms ---
+        // --- ROOT STRIPPING: Generate candidates when APIs have gaps ---
+        function stripToRoot(w) {
+            const prefixes = [
+                're', 'un', 'in', 'dis', 'over', 'under', 'mis', 'pre', 'pro',
+                'anti', 'auto', 'co', 'counter', 'de', 'en', 'em', 'ex',
+                'fore', 'inter', 'mid', 'non', 'out', 'post', 'semi',
+                'sub', 'super', 'sur', 'trans', 'ultra', 'up', 'with'
+            ];
+            const suffixes = [
+                'fulness', 'lessly', 'tion', 'sion', 'ment', 'ness', 'ity',
+                'ful', 'less', 'ing', 'ive', 'ary', 'ery', 'ory', 'ship',
+                'hood', 'dom', 'ism', 'ist', 'ance', 'ence', 'ify', 'ize',
+                'ise', 'ate', 'al', 'ous', 'ible', 'able', 'ical', 'ish',
+                'some', 'ward', 'wise', 'ly', 'ed', 'er', 'or', 'en', 'e'
+            ];
+            let root = w;
+            for (const prefix of prefixes) {
+                if (w.startsWith(prefix) && w.length > prefix.length + 3) {
+                    root = w.slice(prefix.length);
+                    break;
+                }
+            }
+            for (const suffix of suffixes) {
+                if (root.endsWith(suffix) && root.length > suffix.length + 2) {
+                    root = root.slice(0, root.length - suffix.length);
+                    break;
+                }
+            }
+            return root;
+        }
+
+        // Only run candidate lookup if matrix is still missing adjective or adverb
+        if (matrix.adjective.size === 0 || matrix.adverb.size === 0) {
+            const root = stripToRoot(word);
+            const candidates = [
+                root, root + 'e', root + 'ful', root + 'less',
+                root + 'fully', root + 'lessly', root + 'ness',
+                root + 'ment', root + 'ing', root + 'ed',
+                root + 'er', root + 'ion', root + 'ive',
+                root + 'ation', root + 'ize', root + 'ise'
+            ].filter(c => c !== word && c.length > 3);
+
+            const familyResponses = await Promise.all(
+                candidates.slice(0, 8).map(c =>
+                    fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${c}?key=${MW_DICT_KEY}`)
+                        .then(r => r.json())
+                        .then(d => ({ word: c, data: d }))
+                        .catch(() => null)
+                )
+            );
+
+            familyResponses.forEach(result => {
+                if (!result || !Array.isArray(result.data)) return;
+                const firstEntry = result.data.find(e => typeof e === 'object' && e.fl);
+                if (!firstEntry) return; // MW returned suggestions = word doesn't exist
+                const fl = firstEntry.fl.toLowerCase();
+                if (fl === 'adjective') matrix.adjective.add(result.word);
+                else if (fl === 'adverb') matrix.adverb.add(result.word);
+                else if (fl === 'noun') matrix.noun.add(result.word);
+                else if (fl === 'verb') matrix.verb.add(result.word);
+            });
+        }
+
+        // --- MW THESAURUS: Boost synonyms & antonyms ---
         if (Array.isArray(mwThes)) {
             mwThes.forEach(entry => {
                 if (typeof entry !== 'object') return;
@@ -541,8 +629,7 @@
                 ...matrix.adjective,
                 ...matrix.adverb
             ]);
-            familyWords.delete(word); // remove the searched word itself
-
+            familyWords.delete(word);
             if (familyWords.size > 0) {
                 familyGrid.innerHTML = Array.from(familyWords).map(w => `
                     <div class="family-square">
@@ -567,6 +654,7 @@
         document.getElementById('loader').style.display = 'none';
     }
 }
+  
      
 
         // --- THE SUFFIX SORTING ALGORITHM ---
