@@ -469,14 +469,20 @@
                 document.getElementById('loader').style.display = 'none';
 
                 // 2. Find the exact word in our downloaded JSON array
-                const wordEntries = dictionaryArray.filter(entry => 
-                    (entry.word || "").toLowerCase() === word
-                );
+               // 2. Find the exact word in the flat JSON array
+                const wordExists = dictionaryArray.includes(word);
 
-                if (wordEntries.length === 0) {
+                if (!wordExists) {
                     alert("Word not found in local archive.");
                     return;
                 }
+                
+                // Create a mock entry so the UI doesn't crash looking for definitions
+                const wordEntries = [{
+                    word: word,
+                    definition: "Definition not included in this dataset variant.",
+                    pos: ""
+                }];
 
                 // 3. UI RENDERING: Basics
                 document.getElementById('results').style.display = 'block';
