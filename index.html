@@ -439,7 +439,7 @@
             return true;
         }
 
-        // 4. MAIN SEARCH
+        // 4. // 4. MAIN SEARCH (LOCAL JSON ENGINE)
         async function handleSearch(searchWord) {
             const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
             if (!word) return;
@@ -451,270 +451,103 @@
             document.getElementById('clearBtn').style.display = 'block';
 
             try {
-                // ALL 4 MAIN API CALLS IN PARALLEL
-                const [wordsResponse, transResponse, mwDictResponse, mwThesResponse] = await Promise.all([
-                    fetch(`https://wordsapiv1.p.rapidapi.com/words/${word}`, {
-                        method: "GET",
-                        headers: {
-                            "x-rapidapi-key": WORDS_API_KEY,
-                            "x-rapidapi-host": "wordsapiv1.p.rapidapi.com"
-                        }
-                    }),
+                // 1. Grab first letter & Fetch Local Data + Google Translate in parallel
+                const firstLetter = word.charAt(0);
+                
+                const [localResponse, transResponse] = await Promise.all([
+                    fetch(`./by-letter/${firstLetter}.json`),
                     fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ q: word, target: 'ar' })
-                    }),
-                    fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${MW_DICT_KEY}`),
-                    fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${word}?key=${MW_THES_KEY}`)
+                    }).catch(() => null) 
                 ]);
 
-                const [data, transData, mwDict, mwThes] = await Promise.all([
-                    wordsResponse.json(),
-                    transResponse.json(),
-                    mwDictResponse.json(),
-                    mwThesResponse.json()
-                ]);
+                if (!localResponse.ok) throw new Error("Local dataset file missing.");
 
+                const dictionaryArray = await localResponse.json();
                 document.getElementById('loader').style.display = 'none';
 
-                // --- MISSPELLING HANDLER ---
-                if (!data.results) {
-                    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'string') {
-                        const suggHTML = data.slice(0, 6).map(s =>
-                            `<span class="synonym-item" style="cursor:pointer;" onclick="handleSearch('${s}')">${s}</span>`
-                        ).join(' ');
-                        document.getElementById('results').style.display = 'block';
-                        document.getElementById('r-word').innerText = word;
-                        document.getElementById('r-syll-inline').innerText = '';
-                        document.getElementById('r-syll').innerText = '';
-                        document.getElementById('r-pos').innerText = 'not found';
-                        document.getElementById('r-def').innerHTML = `
-                            <div style="font-size:0.9rem; color:var(--text); opacity:0.7;">
-                                ⚠️ Word not found. Did you mean:<br><br>${suggHTML}
-                            </div>`;
-                        document.getElementById('r-syns').innerHTML = '';
-                        document.getElementById('r-ants').innerHTML = '';
-                        document.getElementById('r-etym').innerText = '';
-                        document.getElementById('morph-matrix').style.display = 'none';
-                        document.querySelector('.arabic-box').style.display = 'none';
-                    } else {
-                        alert("Word not found in archive.");
-                    }
+                // 2. Find the exact word in our downloaded JSON array
+                const wordEntries = dictionaryArray.filter(entry => 
+                    (entry.word || "").toLowerCase() === word
+                );
+
+                if (wordEntries.length === 0) {
+                    alert("Word not found in local archive.");
                     return;
                 }
 
+                // 3. UI RENDERING: Basics
                 document.getElementById('results').style.display = 'block';
                 document.getElementById('r-word').innerText = word;
+                
+                const primaryEntry = wordEntries[0]; 
+                document.getElementById('r-pos').innerText = primaryEntry.pos || primaryEntry.partOfSpeech || '';
+                
+                // Syllables (Defaults to word if local DB doesn't have syllable data)
+                document.getElementById('r-syll').innerText = primaryEntry.syllables ? primaryEntry.syllables.join('·') : word;
+                document.getElementById('r-syll-inline').innerText = primaryEntry.syllables ? primaryEntry.syllables.join('·') : word;
 
-                // Arabic Translation
+                // 4. UI RENDERING: Arabic Translation
                 const arabicBox = document.querySelector('.arabic-box');
-                if (transData?.data?.translations?.[0]) {
-                    document.getElementById('r-trans').innerText = transData.data.translations[0].translatedText;
-                    arabicBox.style.display = 'block';
-                } else {
-                    arabicBox.style.display = 'none';
-                }
-
-                // Syllables — shown inline next to word AND in archive
-                const syllText = (data.syllables && data.syllables.list)
-                    ? data.syllables.list.join('·')
-                    : word;
-                document.getElementById('r-syll-inline').innerText = syllText;
-                document.getElementById('r-syll').innerText = syllText;
-
-                // Data Buckets
-                let allSynonyms = new Set();
-                let allAntonyms = new Set();
-                let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
-
-                // --- PRIMARY POS: Trust MW over WordsAPI ---
-                let primaryPos = data.results[0].partOfSpeech;
-                if (Array.isArray(mwDict)) {
-                    const firstMwEntry = mwDict.find(e => typeof e === 'object' && e.fl);
-                    if (firstMwEntry) {
-                        const mwPos = firstMwEntry.fl.toLowerCase();
-                        if (['adjective','adverb','noun','verb'].includes(mwPos)) primaryPos = mwPos;
+                if (transResponse) {
+                    const transData = await transResponse.json();
+                    if (transData?.data?.translations?.[0]) {
+                        document.getElementById('r-trans').innerText = transData.data.translations[0].translatedText;
+                        arabicBox.style.display = 'block';
+                    } else {
+                        arabicBox.style.display = 'none';
                     }
                 }
-                document.getElementById('r-pos').innerText = primaryPos || '';
 
-                // --- DEFINITIONS: Filter to primary POS, max 3 ---
-                const filteredResults = data.results
-                    .filter(entry => entry.partOfSpeech === primaryPos)
-                    .slice(0, 3);
-
-                // Collect synonyms/antonyms and base matrix from WordsAPI
-                data.results.forEach(entry => {
-                    if (entry.synonyms) entry.synonyms.forEach(s => allSynonyms.add(s));
-                    if (entry.antonyms) entry.antonyms.forEach(a => allAntonyms.add(a));
-                    const pos = entry.partOfSpeech;
-                    if (pos && matrix[pos] !== undefined) matrix[pos].add(word);
-                    if (entry.derivationallyRelatedForms) {
-                        entry.derivationallyRelatedForms.forEach(derived => {
-                            if (derived.word && isValidMatrixWord(derived.word)) {
-                                sortIntoMatrix(derived.word, matrix);
-                            }
-                        });
-                    }
-                });
-
-                // Render definitions
+                // 5. UI RENDERING: Definitions
                 const defContainer = document.getElementById('r-def');
-                if (defContainer) {
-                    defContainer.innerHTML = filteredResults.map((entry, index) => {
-                        const displayPos = entry.partOfSpeech ? `<i>${entry.partOfSpeech}</i>` : '';
-                        return `<div style="margin-bottom: 8px; font-size: 0.9rem; color: var(--text);">
-                                    <strong>${index + 1}.</strong> <span style="color: var(--accent);">${displayPos}</span> ${entry.definition}
-                                </div>`;
-                    }).join('');
-                }
+                defContainer.innerHTML = wordEntries.slice(0, 3).map((entry, index) => {
+                    const defText = entry.definition || (entry.senses && entry.senses[0]?.glosses?.[0]) || "Definition available in archive.";
+                    const displayPos = entry.pos || entry.partOfSpeech ? `<i>${entry.pos || entry.partOfSpeech}</i>` : '';
+                    return `<div style="margin-bottom: 8px; font-size: 0.9rem; color: var(--text);">
+                                <strong>${index + 1}.</strong> <span style="color: var(--accent);">${displayPos}</span> ${defText}
+                            </div>`;
+                }).join('');
 
-                // --- MW DICTIONARY: Fill matrix gaps + Etymology ---
-                let etymText = '';
-                if (Array.isArray(mwDict)) {
-                    mwDict.forEach(entry => {
-                        if (typeof entry !== 'object' || !entry.fl) return;
-                        const fl = entry.fl.toLowerCase();
-                        const hw = entry.hwi?.hw?.replace(/\*/g, '') || '';
-                        if (hw && isValidMatrixWord(hw)) {
-                            if (fl === 'adjective') matrix.adjective.add(hw);
-                            else if (fl === 'adverb') matrix.adverb.add(hw);
-                            else if (fl === 'noun') matrix.noun.add(hw);
-                            else if (fl === 'verb') matrix.verb.add(hw);
-                        }
-                        // uros — derived run-on forms
-                        if (entry.uros) {
-                            entry.uros.forEach(uro => {
-                                const uroWord = uro.ure?.replace(/\*/g, '') || '';
-                                const uroFl = uro.fl?.toLowerCase() || '';
-                                if (!uroWord || !isValidMatrixWord(uroWord)) return;
-                                if (uroFl === 'adjective') matrix.adjective.add(uroWord);
-                                else if (uroFl === 'adverb') matrix.adverb.add(uroWord);
-                                else if (uroFl === 'noun') matrix.noun.add(uroWord);
-                                else if (uroFl === 'verb') matrix.verb.add(uroWord);
-                                else sortIntoMatrix(uroWord, matrix);
-                            });
-                        }
-                        // Etymology from first entry that has it
-                        if (!etymText && entry.et && Array.isArray(entry.et)) {
-                            entry.et.forEach(etPart => {
-                                if (Array.isArray(etPart) && etPart[0] === 'text' && !etymText) {
-                                    etymText = etPart[1]
-                                        .replace(/\{it\}/g, '').replace(/\{\/it\}/g, '')
-                                        .replace(/\{[^}]+\}/g, '')
-                                        .replace(/\s+/g, ' ').trim();
-                                }
-                            });
-                        }
-                    });
-                }
-                document.getElementById('r-etym').innerText = etymText || '';
-
-                // --- DEEP ROOT CANDIDATE LOOKUP ---
-                // Always run — find the deepest root and look up full family
-                const deepRoot = stripToDeepestRoot(word);
-                const doubled = withDoubledConsonant(deepRoot);
-
-                const candidates = [
-                    deepRoot,
-                    deepRoot + 'e',
-                    deepRoot + 'ly',
-                    deepRoot + 'ful',
-                    deepRoot + 'less',
-                    deepRoot + 'fully',
-                    deepRoot + 'lessly',
-                    deepRoot + 'ness',
-                    deepRoot + 'ment',
-                    deepRoot + 'tion',
-                    deepRoot + 'ation',
-                    deepRoot + 'ing',
-                    deepRoot + 'ed',
-                    deepRoot + 'er',
-                    deepRoot + 'ion',
-                    deepRoot + 'ive',
-                    deepRoot + 'ize',
-                    deepRoot + 'ise',
-                    deepRoot + 'en',
-                    // doubled consonant forms
-                    ...(doubled ? [
-                        doubled + 'ed',
-                        doubled + 'ing',
-                        doubled + 'er',
-                        doubled + 'ly',
-                        doubled + 'ness'
-                    ] : [])
-                ].filter(c => c !== word && isValidMatrixWord(c) && c.length > 3);
-
-                // Deduplicate candidates
-                const uniqueCandidates = [...new Set(candidates)].slice(0, 12);
-
-                const familyResponses = await Promise.all(
-                    uniqueCandidates.map(c =>
-                        fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${c}?key=${MW_DICT_KEY}`)
-                            .then(r => r.json())
-                            .then(d => ({ word: c, data: d }))
-                            .catch(() => null)
-                    )
-                );
-
-                familyResponses.forEach(result => {
-                    if (!result || !Array.isArray(result.data)) return;
-                    const firstEntry = result.data.find(e => typeof e === 'object' && e.fl);
-                    if (!firstEntry) return;
-                    if (!isValidMatrixWord(result.word)) return;
-                    const fl = firstEntry.fl.toLowerCase();
-                    if (fl === 'adjective') matrix.adjective.add(result.word);
-                    else if (fl === 'adverb') matrix.adverb.add(result.word);
-                    else if (fl === 'noun') matrix.noun.add(result.word);
-                    else if (fl === 'verb') matrix.verb.add(result.word);
+                // 6. UI RENDERING: Synonyms & Antonyms
+                let localSyns = [];
+                let localAnts = [];
+                wordEntries.forEach(e => {
+                    if (e.synonyms) localSyns.push(...e.synonyms);
+                    if (e.antonyms) localAnts.push(...e.antonyms);
                 });
 
-                // --- MW THESAURUS: Boost synonyms & antonyms ---
-                if (Array.isArray(mwThes)) {
-                    mwThes.forEach(entry => {
-                        if (typeof entry !== 'object') return;
-                        if (entry.def) {
-                            entry.def.forEach(def => {
-                                def.sseq?.forEach(sseq => {
-                                    sseq.forEach(sense => {
-                                        if (sense[0] === 'sense') {
-                                            sense[1]?.syn_list?.forEach(synList => {
-                                                synList.forEach(syn => { if (syn.wd) allSynonyms.add(syn.wd); });
-                                            });
-                                            sense[1]?.ant_list?.forEach(antList => {
-                                                antList.forEach(ant => { if (ant.wd) allAntonyms.add(ant.wd); });
-                                            });
-                                        }
-                                    });
-                                });
-                            });
-                        }
-                    });
-                }
-
-                // Render Synonyms (max 7)
                 const synContainer = document.getElementById('r-syns');
-                if (synContainer && allSynonyms.size > 0) {
-                    synContainer.innerHTML = Array.from(allSynonyms).slice(0, 7)
+                if (localSyns.length > 0) {
+                    synContainer.innerHTML = [...new Set(localSyns)].slice(0, 7)
                         .map(syn => `<span class="synonym-item" onclick="handleSearch('${syn}')">${syn}</span>`).join('');
-                } else if (synContainer) {
-                    synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
+                } else {
+                    synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in local archive.</span>";
                 }
 
-                // Render Antonyms (max 7)
                 const antContainer = document.getElementById('r-ants');
-                if (antContainer && allAntonyms.size > 0) {
-                    antContainer.innerHTML = Array.from(allAntonyms).slice(0, 7)
+                if (localAnts.length > 0) {
+                    antContainer.innerHTML = [...new Set(localAnts)].slice(0, 7)
                         .map(ant => `<span class="antonym-item" onclick="handleSearch('${ant}')">${ant}</span>`).join('');
-                } else if (antContainer) {
-                    antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in archive.</span>";
+                } else {
+                    antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in local archive.</span>";
                 }
 
-                // Fire Matrix
+                // 7. UI RENDERING: Morphological Matrix (Instant Local Scan)
+                let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
+                const root = stripToDeepestRoot(word); 
+                
+                // Scan the local file instantly instead of making 12 API calls
+                dictionaryArray.forEach(entry => {
+                    if (entry.word && entry.word.startsWith(root) && entry.word.length <= word.length + 4) {
+                        sortIntoMatrix(entry.word, matrix); 
+                    }
+                });
                 renderMatrix(matrix);
 
-                // Update History
+                // 8. UPDATE FIREBASE & SIDEBAR
                 if (!history.includes(word)) {
                     history.unshift(word);
                     db.ref(userPath + '/history/' + word).set({ timestamp: Date.now() });
@@ -727,6 +560,7 @@
                 document.getElementById('loader').style.display = 'none';
             }
         }
+     
 
         // --- THE SUFFIX SORTING ALGORITHM ---
         function sortIntoMatrix(word, matrix) {
