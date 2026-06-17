@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LinguistHub | Gold Master</title>
-    <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Amiri&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -25,7 +24,6 @@
         
         body { font-family: 'Inter', sans-serif; margin: 0; display: flex; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; transition: 0.3s; }
         
-        /* Sidebar Architecture */
         #sidebar { 
             width: 280px; min-width: 280px; background: var(--sidebar); 
             border-right: 1px solid var(--border); display: flex; flex-direction: column; 
@@ -44,7 +42,6 @@
         .sidebar-footer { padding: 15px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
         .btn-side { width: 100%; padding: 10px; border-radius: 10px; border: none; cursor: pointer; font-weight: 800; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
 
-        /* Main View Architecture */
         main { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; position: relative; }
         
         #menu-toggle {
@@ -57,21 +54,15 @@
 
         .content-wrapper { width: 100%; max-width: 800px; margin-top: 50px; } 
         
-        /* Search Component */
         .search-container { position: relative; display: flex; gap: 12px; width: 100%; margin-bottom: 25px; }
         .search-wrapper { position: relative; flex: 1; display: flex; }
         input[type="text"] { 
             width: 100%; padding: 15px 45px 15px 20px; border-radius: 16px; border: 1px solid var(--border); 
             background: var(--card); color: var(--text); font-size: 1.15rem; outline: none; box-shadow: var(--shadow);
         }
-        .clear-search { 
-            position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; 
-            color: var(--star-inactive); font-weight: bold; font-size: 0.9rem; display: none; z-index: 5;
-        }
-
+        .clear-search { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--star-inactive); font-weight: bold; font-size: 0.9rem; display: none; z-index: 5; }
         .btn-search { background: var(--accent); color: white; border: none; padding: 0 30px; border-radius: 16px; cursor: pointer; font-weight: 800; text-transform: uppercase; font-size: 0.75rem; }
 
-        /* Result Component */
         .res-container { background: var(--card); border-radius: 24px; padding: 25px; border: 1px solid var(--border); box-shadow: var(--shadow); width: 100%; box-sizing: border-box; }
         .res-header { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; }
         
@@ -79,136 +70,33 @@
         .main-star.active { fill: var(--star-active) !important; }
         
         .underline { height: 4px; background: #f59e0b; border-radius: 10px; width: 60px; margin-top: 4px; }
+        
+        #r-word { margin: 0; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px; text-transform: capitalize; overflow-wrap: anywhere; }
 
-        /* Word header row — word + syllables + icons all in one line */
-        .word-header-row {
-            display: flex;
-            align-items: baseline;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        #r-word { 
-            margin: 0; 
-            font-size: clamp(1.2rem, 4vw, 1.8rem);
-            font-weight: 800;       
-            letter-spacing: -0.5px; 
-            text-transform: capitalize; 
-            overflow-wrap: anywhere;
-            flex-shrink: 1;
-        }
-
-        #r-syll-inline {
-            font-size: clamp(0.6rem, 2vw, 0.75rem);
-            color: var(--accent);
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        /* Arabic Bar Component */
         .arabic-box { background: var(--accent); padding: 8px 20px; border-radius: 14px; margin-bottom: 15px; text-align: center; direction: rtl; color: white; max-width: fit-content; margin-left: auto; margin-right: auto; }
-        .arabic-text { 
-            font-family: 'Amiri', serif; 
-            font-size: 2.2rem;      
-            font-weight: bold; 
-            line-height: 1.2;
-        }
+        .arabic-text { font-family: 'Amiri', serif; font-size: 2.2rem; font-weight: bold; line-height: 1.2; }
 
-        /* Synonyms, Antonyms & Tags */
         .synonym-item { display: inline-block; margin: 2px; padding: 4px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; font-size: 0.7rem; font-weight: 800; color: var(--accent); cursor: pointer; }
         .antonym-item { display: inline-block; margin: 2px; padding: 4px 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 0.75rem; font-weight: 700; color: #b45309; cursor: pointer; }
-        .tag { display: inline-block; padding: 4px 8px; border-radius: 6px; margin: 2px; font-size: 0.7rem; font-weight: 700; background: var(--card); border: 1px solid var(--border); cursor: pointer; color: var(--text); }
 
         #r-def { background: var(--bg); padding: 15px; border-radius: 14px; border-left: 5px solid #f59e0b; margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4; }
         
-        /* Etymology box */
-        #r-etym {
-            font-size: 0.72rem;
-            margin-top: 6px;
-            line-height: 1.5;
-            opacity: 0.8;
-            font-style: italic;
-            color: var(--text);
-        }
-
         #login-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.98); z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; color:white; text-align:center; }
         .loader { display: none; text-align: center; padding: 20px; font-weight: 900; font-size: 1rem; color: var(--accent); letter-spacing: 5px; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
         
-        /* Sidebar Count Badges */
-        #history-count, #pinned-count {
-            font-size: 0.65rem; 
-            margin-left: 8px;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-weight: 800;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            vertical-align: middle;
-        }
-
+        #history-count, #pinned-count { font-size: 0.65rem; margin-left: 8px; padding: 3px 8px; border-radius: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
         #history-count { background-color: rgba(148, 163, 184, 0.15); color: #64748b; }
         [data-theme="dark"] #history-count { background-color: rgba(148, 163, 184, 0.1); color: #94a3b8; }
         #pinned-count { background-color: rgba(245, 158, 11, 0.15); color: #d97706; }
         [data-theme="dark"] #pinned-count { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
       
-        /* MORPHOLOGICAL MATRIX */
-        .matrix-container {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            background: var(--bg);
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            margin-bottom: 15px;
-        }
-
-        .matrix-column {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: var(--card);
-            border-radius: 8px;
-            padding: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .matrix-header {
-            font-size: 0.8rem;
-            font-weight: 800;
-            color: var(--text);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 4px;
-            width: 100%;
-            text-align: center;
-        }
-
-        .matrix-word {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--accent);
-            padding: 4px 0;
-            cursor: pointer;
-            transition: color 0.2s;
-            text-align: center;
-        }
-
+        .matrix-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: var(--bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-top: 20px; }
+        .matrix-column { display: flex; flex-direction: column; align-items: center; background: var(--card); border-radius: 8px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .matrix-header { font-size: 0.8rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 2px solid var(--border); padding-bottom: 4px; width: 100%; text-align: center; }
+        .matrix-word { font-size: 0.85rem; font-weight: 600; color: var(--accent); padding: 4px 0; cursor: pointer; transition: color 0.2s; }
         .matrix-word:hover { color: #b45309; }
-
-        .matrix-empty {
-            font-size: 0.75rem;
-            color: var(--text);
-            opacity: 0.5;
-            font-style: italic;
-        }
-
+        .matrix-empty { font-size: 0.75rem; color: var(--text); opacity: 0.5; font-style: italic; }
     </style>
 </head>
 <body data-theme="light">
@@ -248,13 +136,10 @@
 
             <div id="results" style="display:none;">
                 <div class="res-container">
-
-                    <!-- HEADER: word + syllables + speaker + star -->
                     <div class="res-header">
                         <div style="display: flex; flex-direction: column; width: 100%;">
-                            <div class="word-header-row">
+                            <div style="display: flex; align-items: center; gap: 15px;">
                                 <h1 id="r-word"></h1>
-                                <span id="r-syll-inline"></span>
                                 <button style="background:none; border:none; cursor:pointer; padding:0;" onclick="speak('en')">
                                     <svg style="width:20px; fill:var(--accent);" viewBox="0 0 24 24"><path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16.02C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/></svg>
                                 </button>
@@ -265,56 +150,52 @@
                         </div>
                     </div>
 
-                    <!-- ARABIC TRANSLATION -->
-                    <div class="arabic-box">
+                    <div class="arabic-box" id="arabic-box-container" style="display:none;">
                         <div class="arabic-text" id="r-trans"></div>
                     </div>
 
-                    <!-- DEFINITIONS -->
                     <div id="r-def"></div>
 
-                    <!-- MATRIX (right after definitions) -->
-                    <div class="matrix-container" id="morph-matrix" style="display: none;">
-                        <div class="matrix-column">
-                            <div class="matrix-header">Noun</div>
-                            <div id="col-noun"></div>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+                        <div style="display: flex; gap: 20px; border-top: 1px solid var(--border); padding-top: 12px;">
+                            <div style="flex: 1;">
+                                <h4 style="margin-bottom:6px; opacity:0.6; font-size: 0.6rem; text-transform: uppercase;">Archive</h4>
+                                <p style="font-size:0.8rem; margin:0;"><strong>Syll:</strong> <span id="r-syll" style="color:var(--accent);"></span></p>
+                            </div>
+                            <div style="flex: 1;">
+                                <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Synonyms</h4>
+                                <div id="r-syns" style="margin-bottom: 12px;"></div>
+                                <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Antonyms</h4>
+                                <div id="r-ants"></div>
+                            </div>
+                        </div> 
+                        
+                        <div class="matrix-container" id="morph-matrix" style="display: none;">
+                            <div class="matrix-column">
+                                <div class="matrix-header">Noun</div>
+                                <div id="col-noun"></div>
+                            </div>
+                            <div class="matrix-column">
+                                <div class="matrix-header">Verb</div>
+                                <div id="col-verb"></div>
+                            </div>
+                            <div class="matrix-column">
+                                <div class="matrix-header">Adjective</div>
+                                <div id="col-adjective"></div>
+                            </div>
+                            <div class="matrix-column">
+                                <div class="matrix-header">Adverb</div>
+                                <div id="col-adverb"></div>
+                            </div>
                         </div>
-                        <div class="matrix-column">
-                            <div class="matrix-header">Verb</div>
-                            <div id="col-verb"></div>
-                        </div>
-                        <div class="matrix-column">
-                            <div class="matrix-header">Adjective</div>
-                            <div id="col-adjective"></div>
-                        </div>
-                        <div class="matrix-column">
-                            <div class="matrix-header">Adverb</div>
-                            <div id="col-adverb"></div>
-                        </div>
-                    </div>
 
-                    <!-- ARCHIVE + SYNONYMS/ANTONYMS -->
-                    <div style="display: flex; gap: 20px; border-top: 1px solid var(--border); padding-top: 12px;">
-                        <div style="flex: 1;">
-                            <h4 style="margin-bottom:6px; opacity:0.6; font-size: 0.6rem; text-transform: uppercase;">Archive</h4>
-                            <p style="font-size:0.8rem; margin:0;"><strong>Syll:</strong> <span id="r-syll" style="color:var(--accent);"></span></p>
-                            <p id="r-etym"></p>
-                        </div>
-                        <div style="flex: 1;">
-                            <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Synonyms</h4>
-                            <div id="r-syns" style="margin-bottom: 12px;"></div>
-                            <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Antonyms</h4>
-                            <div id="r-ants"></div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
+                    </div> 
+                </div> 
+            </div> 
+        </div> 
     </main>
 
     <script>
-        // 1. CONFIGURATION
         const firebaseConfig = { 
             apiKey: "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc", 
             authDomain: "lingustichub.firebaseapp.com", 
@@ -323,25 +204,23 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
         const WORDS_API_KEY = "242b9f742fmsh60139fea9266dd6p1d0d10jsnc099683877b9";
         const GOOGLE_KEY = "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc";
-        const MW_DICT_KEY = "7c14969b-2038-4024-ade3-ad9680fd94ff";
-        const MW_THES_KEY = "9e966fec-f0d8-497c-97f3-dd9938d108a0";
 
-        let history = [], bookmarks = [], lastWord = "", currentTab = 'history', userPath = "";
+        let history = [], bookmarks = [], lastWord = "", lastTrans = "", currentTab = 'history', userPath = "";
 
-        // 2. UI CONTROLLER
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
         function toggleTheme() { 
             const c = document.body.getAttribute('data-theme'); 
             document.body.setAttribute('data-theme', c === 'dark' ? 'light' : 'dark'); 
         }
+
         function toggleClearBtn() {
             const input = document.getElementById('wordInput');
             const btn = document.getElementById('clearBtn');
             btn.style.display = input.value.length > 0 ? 'block' : 'none';
         }
+
         function clearSearchInput() {
             const input = document.getElementById('wordInput');
             input.value = "";
@@ -349,7 +228,6 @@
             input.focus();
         }
 
-        // 3. DATA SYNC
         firebase.auth().onAuthStateChanged(user => {
             if (user) {
                 document.getElementById('login-overlay').style.display = 'none';
@@ -373,73 +251,27 @@
             const provider = new firebase.auth.GoogleAuthProvider();
             firebase.auth().signInWithPopup(provider).catch(error => {
                 console.error(error);
-                alert("Login Blocked: " + error.message + "\n\nTip: If you are using a strict pop-up blocker, please allow pop-ups for this site to log in.");
+                alert("Login Blocked: " + error.message);
             });
         }
 
-        // --- DEEP ROOT STRIPPING ---
-        function stripToDeepestRoot(w) {
-            const prefixes = [
-                're', 'un', 'in', 'dis', 'over', 'under', 'mis', 'pre', 'pro',
-                'anti', 'auto', 'co', 'counter', 'de', 'en', 'em', 'ex',
-                'fore', 'inter', 'mid', 'non', 'out', 'post', 'semi',
-                'sub', 'super', 'sur', 'trans', 'ultra', 'up', 'with'
-            ];
-            const suffixes = [
-                'fulness', 'lessly', 'tion', 'sion', 'ment', 'ness', 'ity',
-                'ful', 'less', 'ing', 'ive', 'ary', 'ery', 'ory', 'ship',
-                'hood', 'dom', 'ism', 'ist', 'ance', 'ence', 'ify', 'ize',
-                'ise', 'ate', 'al', 'ous', 'ible', 'able', 'ical', 'ish',
-                'some', 'ward', 'wise', 'ly', 'ed', 'er', 'or', 'en', 'e'
-            ];
-            let root = w;
-            let changed = true;
-            // Loop until nothing more can be stripped
-            while (changed) {
-                changed = false;
-                // Strip prefix
-                for (const prefix of prefixes) {
-                    if (root.startsWith(prefix) && root.length > prefix.length + 3) {
-                        root = root.slice(prefix.length);
-                        changed = true;
-                        break;
-                    }
-                }
-                // Strip suffix
-                for (const suffix of suffixes) {
-                    if (root.endsWith(suffix) && root.length > suffix.length + 2) {
-                        root = root.slice(0, root.length - suffix.length);
-                        changed = true;
-                        break;
-                    }
+        // --- ROOT EXTRACTOR FIX ---
+        function stripToDeepestRoot(word) {
+            if (!word) return "";
+            let root = word.toLowerCase();
+            // Expanded list of suffixes to securely trim long words like "reinforcement"
+            const suffixes = ['ization', 'ability', 'fulness', 'ation', 'ement', 'ness', 'tion', 'sion', 'ment', 'able', 'ible', 'ally', 'ive', 'ing', 'est', 'ous', 'ful', 'ly', 'er', 'ed', 'al', 'ic', 'y', 's'];
+            
+            for (let suf of suffixes) {
+                if (root.endsWith(suf) && root.length - suf.length >= 3) {
+                    root = root.slice(0, -suf.length);
+                    break; 
                 }
             }
             return root;
         }
 
-        // --- CONSONANT DOUBLING for short-vowel words (sad→sadd, run→runn) ---
-        function withDoubledConsonant(root) {
-            const vowels = 'aeiou';
-            const consonants = 'bcdfghjklmnpqrstvwxyz';
-            if (root.length >= 2) {
-                const last = root[root.length - 1];
-                const secondLast = root[root.length - 2];
-                if (consonants.includes(last) && vowels.includes(secondLast) && root.length <= 5) {
-                    return root + last;
-                }
-            }
-            return null;
-        }
-
-        // --- FILTER junk from matrix (hyphens, spaces, too short) ---
-        function isValidMatrixWord(w) {
-            if (!w) return false;
-            if (w.includes('-') || w.includes(' ')) return false;
-            if (w.length < 3) return false;
-            return true;
-        }
-
-        // 4. // 4. MAIN SEARCH (LOCAL JSON ENGINE)
+        // --- THE HYBRID ENGINE ---
         async function handleSearch(searchWord) {
             const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
             if (!word) return;
@@ -451,55 +283,40 @@
             document.getElementById('clearBtn').style.display = 'block';
 
             try {
-                // 1. Grab first letter & Fetch Local Data + Google Translate in parallel
                 const firstLetter = word.charAt(0);
-                
-                const [localResponse, transResponse] = await Promise.all([
-                    fetch(`./by-letter/${firstLetter}.json`),
+
+                // Fetch WordsAPI (Rich Data), Google (Arabic), and Local JSON (Matrix Trees) at the exact same time
+                const [wordsResponse, transResponse, localResponse] = await Promise.all([
+                    fetch(`https://wordsapiv1.p.rapidapi.com/words/${word}`, {
+                        method: "GET",
+                        headers: { "x-rapidapi-key": WORDS_API_KEY, "x-rapidapi-host": "wordsapiv1.p.rapidapi.com" }
+                    }).catch(() => null),
                     fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ q: word, target: 'ar' })
-                    }).catch(() => null) 
+                    }).catch(() => null),
+                    fetch(`./by-letter/${firstLetter}.json`).catch(() => null)
                 ]);
 
-                if (!localResponse.ok) throw new Error("Local dataset file missing.");
-
-                const dictionaryArray = await localResponse.json();
                 document.getElementById('loader').style.display = 'none';
-// 2. Find the exact word safely (Handles both Objects and plain Strings)
-                const wordObj = dictionaryArray.find(item => item === word || item.word === word);
 
-                if (!wordObj) {
-                    alert("Word not found in local archive.");
+                let data = null;
+                if (wordsResponse && wordsResponse.ok) {
+                    data = await wordsResponse.json();
+                }
+
+                if (!data || !data.results || data.results.length === 0) {
+                    alert("Word not found in deep archive.");
                     return;
                 }
 
-                // Create a safe fallback entry so the UI doesn't crash 
-                // Grabs real data if it exists, otherwise uses your fallbacks
-                const wordEntries = [{
-                    word: word,
-                    definition: wordObj.definition || (wordObj.senses && wordObj.senses[0]?.glosses?.[0]) || "Definition not included in this dataset variant.",
-                    pos: wordObj.pos || wordObj.partOfSpeech || "",
-                    syllables: wordObj.syllables || null,
-                    synonyms: wordObj.synonyms || [],
-                    antonyms: wordObj.antonyms || []
-                }];
-
-                // 3. UI RENDERING: Basics
+                // 1. RENDER RICH DATA (Definitions & Synonyms from WordsAPI)
                 document.getElementById('results').style.display = 'block';
                 document.getElementById('r-word').innerText = word;
                 
-                const primaryEntry = wordEntries[0]; 
-                document.getElementById('r-pos').innerText = primaryEntry.pos || primaryEntry.partOfSpeech || '';
-                
-                // Syllables (Defaults to word if local DB doesn't have syllable data)
-                document.getElementById('r-syll').innerText = primaryEntry.syllables ? primaryEntry.syllables.join('·') : word;
-                document.getElementById('r-syll-inline').innerText = primaryEntry.syllables ? primaryEntry.syllables.join('·') : word;
-
-                // 4. UI RENDERING: Arabic Translation
-                const arabicBox = document.querySelector('.arabic-box');
-                if (transResponse) {
+                const arabicBox = document.getElementById('arabic-box-container');
+                if (transResponse && transResponse.ok) {
                     const transData = await transResponse.json();
                     if (transData?.data?.translations?.[0]) {
                         document.getElementById('r-trans').innerText = transData.data.translations[0].translatedText;
@@ -509,54 +326,74 @@
                     }
                 }
 
-                // 5. UI RENDERING: Definitions
-                const defContainer = document.getElementById('r-def');
-                defContainer.innerHTML = wordEntries.slice(0, 3).map((entry, index) => {
-                    const defText = entry.definition || (entry.senses && entry.senses[0]?.glosses?.[0]) || "Definition available in archive.";
-                    const displayPos = entry.pos || entry.partOfSpeech ? `<i>${entry.pos || entry.partOfSpeech}</i>` : '';
-                    return `<div style="margin-bottom: 8px; font-size: 0.9rem; color: var(--text);">
-                                <strong>${index + 1}.</strong> <span style="color: var(--accent);">${displayPos}</span> ${defText}
-                            </div>`;
-                }).join('');
+                if (data.syllables && data.syllables.list) {
+                    document.getElementById('r-syll').innerText = data.syllables.list.join('·');
+                } else {
+                    document.getElementById('r-syll').innerText = word;
+                }
 
-                // 6. UI RENDERING: Synonyms & Antonyms
-                let localSyns = [];
-                let localAnts = [];
-                wordEntries.forEach(e => {
-                    if (e.synonyms) localSyns.push(...e.synonyms);
-                    if (e.antonyms) localAnts.push(...e.antonyms);
-                });
+                let allSynonyms = new Set();
+                let allAntonyms = new Set();
+                let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
+
+                const defContainer = document.getElementById('r-def'); 
+                if (defContainer) {
+                    defContainer.innerHTML = data.results.slice(0, 4).map((entry, index) => {
+                        if (entry.synonyms) entry.synonyms.forEach(s => allSynonyms.add(s));
+                        if (entry.antonyms) entry.antonyms.forEach(a => allAntonyms.add(a));
+
+                        const pos = entry.partOfSpeech;
+                        if (index === 0 && pos) document.getElementById('r-pos').innerText = pos;
+                        const displayPos = pos ? `<i>${pos}</i>` : '';
+                        
+                        return `<div style="margin-bottom: 8px; font-size: 0.9rem; color: var(--text);">
+                                    <strong>${index + 1}.</strong> <span style="color: var(--accent);">${displayPos}</span> ${entry.definition || ''}
+                                </div>`;
+                    }).join('');
+                }
 
                 const synContainer = document.getElementById('r-syns');
-                if (localSyns.length > 0) {
-                    synContainer.innerHTML = [...new Set(localSyns)].slice(0, 7)
+                if (synContainer && allSynonyms.size > 0) {
+                    synContainer.innerHTML = Array.from(allSynonyms).slice(0, 10)
                         .map(syn => `<span class="synonym-item" onclick="handleSearch('${syn}')">${syn}</span>`).join('');
-                } else {
-                    synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in local archive.</span>";
+                } else if (synContainer) {
+                    synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
                 }
 
                 const antContainer = document.getElementById('r-ants');
-                if (localAnts.length > 0) {
-                    antContainer.innerHTML = [...new Set(localAnts)].slice(0, 7)
+                if (antContainer && allAntonyms.size > 0) {
+                    antContainer.innerHTML = Array.from(allAntonyms).slice(0, 10)
                         .map(ant => `<span class="antonym-item" onclick="handleSearch('${ant}')">${ant}</span>`).join('');
-                } else {
-                    antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in local archive.</span>";
+                } else if (antContainer) {
+                    antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in archive.</span>";
                 }
 
-// 7. UI RENDERING: Morphological Matrix (Instant Local Scan)
-                let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
-                const root = stripToDeepestRoot(word); 
-                
-                // Safely scan the local file whether it uses objects or flat strings
-                dictionaryArray.forEach(entry => {
-                    const checkWord = entry.word || entry; // Adapts to your dataset structure instantly
-                    if (checkWord && checkWord.startsWith(root) && checkWord.length <= word.length + 4) {
-                        sortIntoMatrix(checkWord, matrix); 
-                    }
-                });
-                renderMatrix(matrix);
+                // 2. RENDER MATRIX (Word Family Scan from Local JSON)
+                const root = stripToDeepestRoot(word);
 
-                // 8. UPDATE FIREBASE & SIDEBAR
+                if (localResponse && localResponse.ok) {
+                    const dictionaryArray = await localResponse.json();
+                    dictionaryArray.forEach(entry => {
+                        const checkWord = entry.word || entry; 
+                        if (checkWord && checkWord.startsWith(root) && checkWord.length <= word.length + 8) {
+                            sortIntoMatrix(checkWord, matrix); 
+                        }
+                    });
+                } else {
+                    // Fallback to API if local file fails
+                    data.results.forEach(entry => {
+                        if (entry.derivationallyRelatedForms) {
+                            entry.derivationallyRelatedForms.forEach(w => sortIntoMatrix(w, matrix));
+                        }
+                    });
+                }
+
+                // Force the main word into the matrix layout
+                const mainPos = data.results[0]?.partOfSpeech || 'noun';
+                if(matrix[mainPos]) matrix[mainPos].add(word);
+
+                renderMatrix(matrix);
+                
                 if (!history.includes(word)) {
                     history.unshift(word);
                     db.ref(userPath + '/history/' + word).set({ timestamp: Date.now() });
@@ -569,11 +406,8 @@
                 document.getElementById('loader').style.display = 'none';
             }
         }
-     
 
-        // --- THE SUFFIX SORTING ALGORITHM ---
         function sortIntoMatrix(word, matrix) {
-            if (!isValidMatrixWord(word)) return;
             if (word.endsWith('ly') && !word.endsWith('ply')) {
                 matrix.adverb.add(word);
             } else if (word.match(/(tion|sion|ment|ness|ity|ism|ist|er|or|ance|ence|ship)$/)) {
@@ -587,7 +421,6 @@
             }
         }
 
-        // --- MATRIX RENDERER ---
         function renderMatrix(matrix) {
             document.getElementById('morph-matrix').style.display = 'grid';
             const columns = ['noun', 'verb', 'adjective', 'adverb'];
@@ -595,6 +428,7 @@
                 const container = document.getElementById(`col-${col}`);
                 if (!container) return; 
                 container.innerHTML = ""; 
+
                 if (matrix[col].size > 0) {
                     Array.from(matrix[col]).forEach(w => {
                         const div = document.createElement('div');
@@ -609,7 +443,6 @@
             });
         }
 
-        // 6. FEATURES: Cloud TTS API integration
         async function speak(l) {
             if (!lastWord || l === 'ar') return;
             const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_KEY}`;            
@@ -619,22 +452,12 @@
                 audioConfig: { audioEncoding: 'MP3', speakingRate: 0.9 }
             };
             try {
-                const response = await fetch(ttsUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody)
-                });
+                const response = await fetch(ttsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) });
                 const data = await response.json();
-                if (data.error) {
-                    console.error("API Error:", data.error.message);
-                    alert("TTS Error: Did you enable the API in Google Cloud Console?");
-                    return;
-                }
+                if (data.error) { alert("TTS Error: API issues"); return; }
                 const audio = new Audio("data:audio/mp3;base64," + data.audioContent);
                 audio.play();
-            } catch (error) {
-                console.error("Audio generation failed:", error);
-            }
+            } catch (error) { console.error("Audio generation failed:", error); }
         }
 
         function toggleBookmark() { 
@@ -667,10 +490,7 @@
             updateSidebar(); 
         }
 
-        function clearCloud() { 
-            if(confirm("Permanently purge cloud history?")) db.ref(userPath).remove(); 
-        }
-
+        function clearCloud() { if(confirm("Permanently purge cloud history?")) db.ref(userPath).remove(); }
         function exportData() { 
             const b = new Blob([JSON.stringify({history, bookmarks}, null, 2)], {type: 'application/json'}); 
             const a = document.createElement('a'); a.href = URL.createObjectURL(b); 
