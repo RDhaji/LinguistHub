@@ -467,21 +467,23 @@
 
                 const dictionaryArray = await localResponse.json();
                 document.getElementById('loader').style.display = 'none';
+// 2. Find the exact word safely (Handles both Objects and plain Strings)
+                const wordObj = dictionaryArray.find(item => item === word || item.word === word);
 
-                // 2. Find the exact word in our downloaded JSON array
-               // 2. Find the exact word in the flat JSON array
-                const wordExists = dictionaryArray.includes(word);
-
-                if (!wordExists) {
+                if (!wordObj) {
                     alert("Word not found in local archive.");
                     return;
                 }
-                
-                // Create a mock entry so the UI doesn't crash looking for definitions
+
+                // Create a safe fallback entry so the UI doesn't crash 
+                // Grabs real data if it exists, otherwise uses your fallbacks
                 const wordEntries = [{
                     word: word,
-                    definition: "Definition not included in this dataset variant.",
-                    pos: ""
+                    definition: wordObj.definition || (wordObj.senses && wordObj.senses[0]?.glosses?.[0]) || "Definition not included in this dataset variant.",
+                    pos: wordObj.pos || wordObj.partOfSpeech || "",
+                    syllables: wordObj.syllables || null,
+                    synonyms: wordObj.synonyms || [],
+                    antonyms: wordObj.antonyms || []
                 }];
 
                 // 3. UI RENDERING: Basics
@@ -541,14 +543,15 @@
                     antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in local archive.</span>";
                 }
 
-                // 7. UI RENDERING: Morphological Matrix (Instant Local Scan)
+// 7. UI RENDERING: Morphological Matrix (Instant Local Scan)
                 let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
                 const root = stripToDeepestRoot(word); 
                 
-                // Scan the local file instantly instead of making 12 API calls
+                // Safely scan the local file whether it uses objects or flat strings
                 dictionaryArray.forEach(entry => {
-                    if (entry.word && entry.word.startsWith(root) && entry.word.length <= word.length + 4) {
-                        sortIntoMatrix(entry.word, matrix); 
+                    const checkWord = entry.word || entry; // Adapts to your dataset structure instantly
+                    if (checkWord && checkWord.startsWith(root) && checkWord.length <= word.length + 4) {
+                        sortIntoMatrix(checkWord, matrix); 
                     }
                 });
                 renderMatrix(matrix);
