@@ -296,7 +296,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ q: word, target: 'ar' })
                     }).catch(() => null),
-                    fetch(`./by-letter/${firstLetter}.json`).catch(() => null)
+                    fetch(`./by-letter-enriched/${firstLetter}.json`).catch(() => null)
                 ]);
 
                 document.getElementById('loader').style.display = 'none';
@@ -336,9 +336,27 @@
                 let allAntonyms = new Set();
                 let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
 
+                // Parse local JSON once — used for BOTH synonyms/antonyms AND matrix
+                let localEntry = null;
+                if (localResponse && localResponse.ok) {
+                    try {
+                        const localData = await localResponse.json();
+                        // Support both object-keyed format: { "do": {...} }
+                        // and array format: [ { "word": "do", ... }, ... ]
+                        if (Array.isArray(localData)) {
+                            localEntry = localData.find(e => (e.word || e) === word) || null;
+                        } else {
+                            localEntry = localData[word] || null;
+                        }
+                    } catch(e) {
+                        console.warn("Local JSON parse error:", e);
+                    }
+                }
+
                 const defContainer = document.getElementById('r-def'); 
                 if (defContainer) {
                     defContainer.innerHTML = data.results.slice(0, 4).map((entry, index) => {
+                        // Collect synonyms/antonyms from WordsAPI as a secondary source
                         if (entry.synonyms) entry.synonyms.forEach(s => allSynonyms.add(s));
                         if (entry.antonyms) entry.antonyms.forEach(a => allAntonyms.add(a));
 
@@ -350,6 +368,18 @@
                                     <strong>${index + 1}.</strong> <span style="color: var(--accent);">${displayPos}</span> ${entry.definition || ''}
                                 </div>`;
                     }).join('');
+                }
+
+                // FIX: Pull synonyms/antonyms from local JSON first (richer source),
+                // then supplement with whatever WordsAPI already collected above.
+                if (localEntry) {
+                    const localSyns = localEntry.synonyms || localEntry.synonym || [];
+                    const localAnts = localEntry.antonyms || localEntry.antonym || [];
+                    // Local JSON takes priority — prepend before API results
+                    const mergedSyns = new Set([...localSyns, ...allSynonyms]);
+                    const mergedAnts = new Set([...localAnts, ...allAntonyms]);
+                    allSynonyms = mergedSyns;
+                    allAntonyms = mergedAnts;
                 }
 
                 const synContainer = document.getElementById('r-syns');
@@ -368,29 +398,26 @@
                     antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in archive.</span>";
                 }
 
-                // 2. RENDER MATRIX (Word Family Scan from Local JSON)
-                const root = stripToDeepestRoot(word);
-
-                if (localResponse && localResponse.ok) {
-                    const dictionaryArray = await localResponse.json();
-                    dictionaryArray.forEach(entry => {
-                        const checkWord = entry.word || entry; 
-                        if (checkWord && checkWord.startsWith(root) && checkWord.length <= word.length + 8) {
-                            sortIntoMatrix(checkWord, matrix); 
-                        }
-                    });
+                // 2. RENDER MATRIX - read directly from structured WordNet forms, no suffix guessing
+                if (localEntry && localEntry.forms) {
+                    const f = localEntry.forms;
+                    (f.noun      || []).forEach(w => matrix.noun.add(w));
+                    (f.verb      || []).forEach(w => matrix.verb.add(w));
+                    (f.adjective || []).forEach(w => matrix.adjective.add(w));
+                    (f.adverb    || []).forEach(w => matrix.adverb.add(w));
+                    // Always ensure searched word appears in its correct column
+                    const mainPos = data.results[0]?.partOfSpeech || 'noun';
+                    if (matrix[mainPos]) matrix[mainPos].add(word);
                 } else {
-                    // Fallback to API if local file fails
+                    // Fallback: WordsAPI derivationallyRelatedForms + suffix guessing
                     data.results.forEach(entry => {
                         if (entry.derivationallyRelatedForms) {
                             entry.derivationallyRelatedForms.forEach(w => sortIntoMatrix(w, matrix));
                         }
                     });
+                    const mainPos = data.results[0]?.partOfSpeech || 'noun';
+                    if (matrix[mainPos]) matrix[mainPos].add(word);
                 }
-
-                // Force the main word into the matrix layout
-                const mainPos = data.results[0]?.partOfSpeech || 'noun';
-                if(matrix[mainPos]) matrix[mainPos].add(word);
 
                 renderMatrix(matrix);
                 
