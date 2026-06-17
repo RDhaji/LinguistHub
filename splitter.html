@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>Dictionary Splitter Tool</h2>
+    <input type="file" id="fileInput" accept=".json">
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                const data = JSON.parse(event.target.result);
+                const words = Object.keys(data); // Grabs all 466,000 words
+                let sorted = {};
+
+                // Group words by their first letter
+                words.forEach(word => {
+                    let firstLetter = word.charAt(0).toLowerCase();
+                    if (firstLetter >= 'a' && firstLetter <= 'z') {
+                        if (!sorted[firstLetter]) sorted[firstLetter] = [];
+                        sorted[firstLetter].push(word);
+                    }
+                });
+
+                // Trigger 26 downloads automatically
+                Object.keys(sorted).forEach((letter, index) => {
+                    setTimeout(() => {
+                        const blob = new Blob([JSON.stringify(sorted[letter])], {type: 'application/json'});
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${letter}.json`;
+                        a.click();
+                    }, index * 300); // 300ms delay so the browser doesn't block the downloads
+                });
+            };
+            reader.readAsText(file);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinguistHub | Gold Master</title>
+    <link rel="manifest" href="manifest.json">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+    <style>
+        :root { 
+            --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --accent: #2563eb; 
+            --border: #e2e8f0; --sidebar: #ffffff; --item-hover: #f8fafc; 
+            --star-active: #f59e0b; --star-inactive: #cbd5e1; --danger: #f43f5e;
+            --shadow: 0 4px 20px -2px rgb(0 0 0 / 0.05);
+        }
+        [data-theme="dark"] { 
+            --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #3b82f6; 
+            --border: #334155; --sidebar: #0f172a; --item-hover: #1e293b;
+        }
+        
+        body { font-family: 'Inter', sans-serif; margin: 0; display: flex; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; transition: 0.3s; }
+        
+        /* Sidebar Architecture */
+        #sidebar { 
+            width: 280px; min-width: 280px; background: var(--sidebar); 
+            border-right: 1px solid var(--border); display: flex; flex-direction: column; 
+            z-index: 10; transition: transform 0.3s ease, margin-left 0.3s ease;
+        }
+        #sidebar.collapsed { margin-left: -280px; }
+
+        .sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: none; cursor: pointer; color: var(--text); font-weight: 800; opacity: 0.3; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; }
+        .tab-btn.active { opacity: 1; border-bottom: 3px solid var(--accent); }
+        #list-items { flex: 1; overflow-y: auto; }
+        .list-item { padding: 10px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; cursor: pointer; transition: 0.2s; gap: 12px; }
+        .list-item:hover { background: var(--item-hover); }
+        .item-text { flex: 1; font-weight: 600; font-size: 0.9rem; text-transform: capitalize; }
+        
+        .sidebar-footer { padding: 15px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+        .btn-side { width: 100%; padding: 10px; border-radius: 10px; border: none; cursor: pointer; font-weight: 800; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
+
+        /* Main View Architecture */
+        main { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; position: relative; }
+        
+        #menu-toggle {
+            position: absolute; left: 20px; top: 20px; background: var(--card); border: 1px solid var(--border);
+            border-radius: 10px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: var(--shadow); z-index: 20; color: var(--text); font-size: 1.1rem;
+        }
+
+        .theme-toggle { position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 1.4rem; cursor: pointer; z-index: 20; }
+
+        .content-wrapper { width: 100%; max-width: 800px; margin-top: 50px; } 
+        
+        /* Search Component */
+        .search-container { position: relative; display: flex; gap: 12px; width: 100%; margin-bottom: 25px; }
+        .search-wrapper { position: relative; flex: 1; display: flex; }
+        input[type="text"] { 
+            width: 100%; padding: 15px 45px 15px 20px; border-radius: 16px; border: 1px solid var(--border); 
+            background: var(--card); color: var(--text); font-size: 1.15rem; outline: none; box-shadow: var(--shadow);
+        }
+        .clear-search { 
+            position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; 
+            color: var(--star-inactive); font-weight: bold; font-size: 0.9rem; display: none; z-index: 5;
+        }
+
+        .btn-search { background: var(--accent); color: white; border: none; padding: 0 30px; border-radius: 16px; cursor: pointer; font-weight: 800; text-transform: uppercase; font-size: 0.75rem; }
+
+        /* Result Component */
+        .res-container { background: var(--card); border-radius: 24px; padding: 25px; border: 1px solid var(--border); box-shadow: var(--shadow); width: 100%; box-sizing: border-box; }
+        .res-header { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; }
+        
+        .main-star { width: 26px !important; height: 26px !important; min-width: 26px; fill: var(--star-inactive); cursor: pointer; transition: 0.2s; }
+        .main-star.active { fill: var(--star-active) !important; }
+        
+        .underline { height: 4px; background: #f59e0b; border-radius: 10px; width: 60px; margin-top: 4px; }
+        
+        /* Compact Output Typography */
+        #r-word { 
+            margin: 0; 
+            font-size: 1.8rem;      
+            font-weight: 800;       
+            letter-spacing: -0.5px; 
+            text-transform: capitalize; 
+            overflow-wrap: anywhere; 
+        }
+
+        /* Arabic Bar Component */
+        .arabic-box { background: var(--accent); padding: 8px 20px; border-radius: 14px; margin-bottom: 15px; text-align: center; direction: rtl; color: white; max-width: fit-content; margin-left: auto; margin-right: auto; }
+        .arabic-text { 
+            font-family: 'Amiri', serif; 
+            font-size: 2.2rem;      
+            font-weight: bold; 
+            line-height: 1.2;
+        }
+
+      /* Synonyms, Antonyms & Tags */
+        .synonym-item { display: inline-block; margin: 2px; padding: 4px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; font-size: 0.7rem; font-weight: 800; color: var(--accent); cursor: pointer; }
+
+        .antonym-item { display: inline-block; margin: 2px; padding: 4px 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 0.75rem; font-weight: 700; color: #b45309; cursor: pointer; }
+
+        .family-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 15px; }
+        .family-square { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 10px; min-height: 70px; }
+        .tag { display: inline-block; padding: 4px 8px; border-radius: 6px; margin: 2px; font-size: 0.7rem; font-weight: 700; background: var(--card); border: 1px solid var(--border); cursor: pointer; color: var(--text); }
+        .rhyme-item { display: inline-block; margin: 2px; padding: 4px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; font-size: 0.7rem; font-weight: 800; color: var(--accent); cursor: pointer; }
+
+        #r-def { background: var(--bg); padding: 15px; border-radius: 14px; border-left: 5px solid #f59e0b; margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4; }
+        
+        #login-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.98); z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; color:white; text-align:center; }
+        .loader { display: none; text-align: center; padding: 20px; font-weight: 900; font-size: 1rem; color: var(--accent); letter-spacing: 5px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        
+        
+        /* Sidebar Count Badges */
+        #history-count, #pinned-count {
+            font-size: 0.65rem; 
+            margin-left: 8px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+        }
+
+        /* History Badge - Slate Theme */
+        #history-count { background-color: rgba(148, 163, 184, 0.15); color: #64748b; }
+        [data-theme="dark"] #history-count { background-color: rgba(148, 163, 184, 0.1); color: #94a3b8; }
+
+        /* Pinned Badge - Amber Theme */
+        #pinned-count { background-color: rgba(245, 158, 11, 0.15); color: #d97706; }
+        [data-theme="dark"] #pinned-count { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+      
+        /* MORPHOLOGICAL MATRIX SCHEDULE */
+    .matrix-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    background: var(--bg);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    margin-top: 20px;
+    }
+
+    .matrix-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--card);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .matrix-header {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 4px;
+    width: 100%;
+    text-align: center;
+    }
+
+    .matrix-word {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    padding: 4px 0;
+    cursor: pointer;
+    transition: color 0.2s;
+    }
+
+    .matrix-word:hover {
+    color: #b45309; /* Matches your amber highlight */
+    }
+
+    .matrix-empty {
+    font-size: 0.75rem;
+    color: var(--text);
+    opacity: 0.5;
+    font-style: italic;
+    }
+
+    </style>
+</head>
+<body data-theme="light">
+
+    <div id="login-overlay">
+        <h1 style="font-size:3rem; letter-spacing:-2px; margin-bottom:10px;">LinguistHub</h1>
+        <button onclick="login()" style="padding:18px 45px; border-radius:45px; border:none; background:#2563eb; color:white; font-weight:800; cursor:pointer;">OPEN ARCHIVE</button>
+    </div>
+
+    <aside id="sidebar">
+        <div class="sidebar-tabs">
+           <button class="tab-btn active" id="tab-history" onclick="setTab('history')">History <span id="history-count">0</span></button>
+           <button class="tab-btn" id="tab-bookmarks" onclick="setTab('bookmarks')">Pinned <span id="pinned-count">0</span></button>
+        </div>
+        <div id="list-items"></div>
+        <div class="sidebar-footer">
+            <button class="btn-side" style="background:#f59e0b; color:white;" onclick="window.print()">PRINT STUDY</button>
+            <button class="btn-side" style="background:var(--accent); color:white;" onclick="exportData()">EXPORT</button>
+            <button class="btn-side" style="background:var(--danger); color:white;" onclick="clearCloud()">PURGE</button>
+        </div>
+    </aside>
+
+    <main>
+        <button id="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+        
+        <div class="content-wrapper">
+            <div class="search-container">
+                <div class="search-wrapper">
+                    
+                    <input type="text" id="wordInput" name="dictionarySearch" autocomplete="off" placeholder="Analyze word..." onkeypress="if(event.key === 'Enter') handleSearch()" oninput="toggleClearBtn()">
+                    
+                    <span id="clearBtn" class="clear-search" onclick="clearSearchInput()">✕</span>
+                </div>
+                <button class="btn-search" onclick="handleSearch()">SEARCH</button>
+            </div>
+
+            <div id="loader" class="loader">SYNCING...</div>
+
+            <div id="results" style="display:none;">
+                <div class="res-container">
+                    <div class="res-header">
+                        <div style="display: flex; flex-direction: column; width: 100%;">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <h1 id="r-word"></h1>
+                                <button style="background:none; border:none; cursor:pointer; padding:0;" onclick="speak('en')">
+                                    <svg style="width:20px; fill:var(--accent);" viewBox="0 0 24 24"><path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16.02C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/></svg>
+                                </button>
+                                <svg class="main-star" id="mainStar" onclick="toggleBookmark()" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            </div>
+                            <div class="underline"></div>
+                            <span id="r-pos" style="font-weight:900; font-size:0.6rem; color:var(--accent); text-transform:uppercase; margin-top:6px; display:block; letter-spacing:1.5px;"></span>
+                        </div>
+                    </div>
+
+                    <div class="arabic-box">
+                        <div class="arabic-text" id="r-trans"></div>
+                    </div>
+
+                    <div id="r-def"></div>
+
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+                        <div><div id="r-family-grid" class="family-grid"></div></div>
+                        <div style="display: flex; gap: 20px; border-top: 1px solid var(--border); padding-top: 12px;">
+                            <div style="flex: 1;">
+                                <h4 style="margin-bottom:6px; opacity:0.6; font-size: 0.6rem; text-transform: uppercase;">Archive</h4>
+                                <p style="font-size:0.8rem; margin:0;"><strong>Syll:</strong> <span id="r-syll" style="color:var(--accent);"></span></p>
+                                <p id="r-etym" style="font-size:0.7rem; margin-top:4px; line-height:1.3; opacity:0.8; font-style: italic;"></p>
+                            </div>
+                            <div style="flex: 1;">
+                         <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Synonyms</h4>
+                          <div id="r-syns" style="margin-bottom: 12px;"></div>
+                          <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Antonyms</h4>
+                              <div id="r-ants"></div>
+                              
+                           <div class="matrix-container" id="morph-matrix" style="display: none;">
+                             <div class="matrix-column">
+                               <div class="matrix-header">Noun</div>
+                               <div id="col-noun"></div>
+                             </div>
+                             <div class="matrix-column">
+                               <div class="matrix-header">Verb</div>
+                               <div id="col-verb"></div>
+                             </div>
+                             <div class="matrix-column">
+                               <div class="matrix-header">Adjective</div>
+                               <div id="col-adjective"></div>
+                             </div>
+                             <div class="matrix-column">
+                                <div class="matrix-header">Adverb</div>
+                                <div id="col-adverb"></div>
+                             </div>
+                           </div>
+                        </div> </div> </div> </div> </div> </div> </main>
+
+    <script>
+        // 1. CONFIGURATION
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc", 
+            authDomain: "lingustichub.firebaseapp.com", 
+            databaseURL: "https://lingustichub-default-rtdb.firebaseio.com/", 
+            projectId: "lingustichub" 
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        // Delete DICT_KEY and THES_KEY, and add WORDS_API_KEY
+        const WORDS_API_KEY = "242b9f742fmsh60139fea9266dd6p1d0d10jsnc099683877b9";
+
+        const GOOGLE_KEY = "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc";
+        const MW_DICT_KEY = "7c14969b-2038-4024-ade3-ad9680fd94ff";
+        const MW_THES_KEY = "9e966fec-f0d8-497c-97f3-dd9938d108a0";
+
+        let history = [], bookmarks = [], lastWord = "", currentTab = 'history', userPath = "";
+
+        // 2. UI CONTROLLER
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+        function toggleTheme() { 
+            const c = document.body.getAttribute('data-theme'); 
+            document.body.setAttribute('data-theme', c === 'dark' ? 'light' : 'dark'); 
+        }
+
+        function toggleClearBtn() {
+            const input = document.getElementById('wordInput');
+            const btn = document.getElementById('clearBtn');
+            btn.style.display = input.value.length > 0 ? 'block' : 'none';
+        }
+
+        function clearSearchInput() {
+            const input = document.getElementById('wordInput');
+            input.value = "";
+            toggleClearBtn();
+            input.focus();
+        }
+
+      // 3. DATA SYNC
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-overlay').style.display = 'none';
+                userPath = 'users/' + user.uid;
+                db.ref(userPath + '/history').on('value', s => {
+                    const data = s.val() || {};
+                    history = Object.keys(data).sort((a,b) => data[b].timestamp - data[a].timestamp);
+                    updateSidebar();
+                });
+                db.ref(userPath + '/bookmarks').on('value', s => {
+                    bookmarks = Object.keys(s.val() || {});
+                    updateSidebar();
+                    updateStarUI();
+                });
+            } else {
+                document.getElementById('login-overlay').style.display = 'flex';
+            }
+        });
+
+        function login() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            firebase.auth().signInWithPopup(provider).catch(error => {
+                console.error(error);
+                alert("Login Blocked: " + error.message + "\n\nTip: If you are using a strict pop-up blocker, please allow pop-ups for this site to log in.");
+            });
+        }
+
+      async function handleSearch(searchWord) {
+    const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
+    if (!word) return;
+
+    lastWord = word;
+    document.getElementById('wordInput').value = word;
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('clearBtn').style.display = 'block';
+
+    try {
+        // ALL 4 MAIN API CALLS IN PARALLEL
+        const [wordsResponse, transResponse, mwDictResponse, mwThesResponse] = await Promise.all([
+            fetch(`https://wordsapiv1.p.rapidapi.com/words/${word}`, {
+                method: "GET",
+                headers: {
+                    "x-rapidapi-key": WORDS_API_KEY,
+                    "x-rapidapi-host": "wordsapiv1.p.rapidapi.com"
+                }
+            }),
+            fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ q: word, target: 'ar' })
+            }),
+            fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${MW_DICT_KEY}`),
+            fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${word}?key=${MW_THES_KEY}`)
+        ]);
+
+        const [data, transData, mwDict, mwThes] = await Promise.all([
+            wordsResponse.json(),
+            transResponse.json(),
+            mwDictResponse.json(),
+            mwThesResponse.json()
+        ]);
+
+        document.getElementById('loader').style.display = 'none';
+
+        // --- MISSPELLING HANDLER ---
+        if (!data.results) {
+            // WordsAPI returns array of string suggestions for unknown words
+            if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'string') {
+                const suggHTML = data.slice(0, 6).map(s =>
+                    `<span class="synonym-item" style="cursor:pointer;" onclick="handleSearch('${s}')">${s}</span>`
+                ).join(' ');
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('r-word').innerText = word;
+                document.getElementById('r-pos').innerText = 'not found';
+                document.getElementById('r-def').innerHTML = `
+                    <div style="font-size:0.9rem; color:var(--text); opacity:0.7;">
+                        ⚠️ Word not found. Did you mean:<br><br>${suggHTML}
+                    </div>`;
+                document.getElementById('r-family-grid').innerHTML = '';
+                document.getElementById('r-syns').innerHTML = '';
+                document.getElementById('r-ants').innerHTML = '';
+                document.getElementById('morph-matrix').style.display = 'none';
+                document.querySelector('.arabic-box').style.display = 'none';
+            } else {
+                alert("Word not found in archive.");
+            }
+            return;
+        }
+
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('r-word').innerText = word;
+
+        // Arabic Translation
+        const arabicBox = document.querySelector('.arabic-box');
+        if (transData?.data?.translations?.[0]) {
+            document.getElementById('r-trans').innerText = transData.data.translations[0].translatedText;
+            arabicBox.style.display = 'block';
+        } else {
+            arabicBox.style.display = 'none';
+        }
+
+        // Syllables
+        if (data.syllables && data.syllables.list) {
+            document.getElementById('r-syll').innerText = data.syllables.list.join('·');
+        } else {
+            document.getElementById('r-syll').innerText = word;
+        }
+
+        // Data Buckets
+        let allSynonyms = new Set();
+        let allAntonyms = new Set();
+        let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
+
+        // --- PRIMARY POS: Trust MW over WordsAPI ---
+        let primaryPos = data.results[0].partOfSpeech;
+        if (Array.isArray(mwDict)) {
+            const firstMwEntry = mwDict.find(e => typeof e === 'object' && e.fl);
+            if (firstMwEntry) {
+                const mwPos = firstMwEntry.fl.toLowerCase();
+                if (['adjective','adverb','noun','verb'].includes(mwPos)) primaryPos = mwPos;
+            }
+        }
+        document.getElementById('r-pos').innerText = primaryPos || '';
+
+        // --- DEFINITIONS: Filter to primary POS, max 3 ---
+        const filteredResults = data.results
+            .filter(entry => entry.partOfSpeech === primaryPos)
+            .slice(0, 3);
+
+        // Collect synonyms/antonyms and base matrix from WordsAPI
+        data.results.forEach(entry => {
+            if (entry.synonyms) entry.synonyms.forEach(s => allSynonyms.add(s));
+            if (entry.antonyms) entry.antonyms.forEach(a => allAntonyms.add(a));
+            const pos = entry.partOfSpeech;
+            if (pos && matrix[pos] !== undefined) matrix[pos].add(word);
+            // WordsAPI derived forms — primary source
+            if (entry.derivationallyRelatedForms) {
+                entry.derivationallyRelatedForms.forEach(derived => {
+                    if (derived.word) sortIntoMatrix(derived.word, matrix);
+                });
+            }
+        });
+
+        // Render filtered definitions
+        const defContainer = document.getElementById('r-def');
+        if (defContainer) {
+            defContainer.innerHTML = filteredResults.map((entry, index) => {
+                const displayPos = entry.partOfSpeech ? `<i>${entry.partOfSpeech}</i>` : '';
+                return `<div style="margin-bottom: 8px; font-size: 0.9rem; color: var(--text);">
+                            <strong>${index + 1}.</strong> <span style="color: var(--accent);">${displayPos}</span> ${entry.definition}
+                        </div>`;
+            }).join('');
+        }
+
+        // --- MW DICTIONARY: Fill matrix gaps ---
+        if (Array.isArray(mwDict)) {
+            mwDict.forEach(entry => {
+                if (typeof entry !== 'object' || !entry.fl) return;
+                const fl = entry.fl.toLowerCase();
+                const hw = entry.hwi?.hw?.replace(/\*/g, '') || '';
+                if (!hw) return;
+                if (fl === 'adjective') matrix.adjective.add(hw);
+                else if (fl === 'adverb') matrix.adverb.add(hw);
+                else if (fl === 'noun') matrix.noun.add(hw);
+                else if (fl === 'verb') matrix.verb.add(hw);
+                // uros = undefined run-ons (derived forms listed under this headword)
+                if (entry.uros) {
+                    entry.uros.forEach(uro => {
+                        const uroWord = uro.ure?.replace(/\*/g, '') || '';
+                        const uroFl = uro.fl?.toLowerCase() || '';
+                        if (!uroWord) return;
+                        if (uroFl === 'adjective') matrix.adjective.add(uroWord);
+                        else if (uroFl === 'adverb') matrix.adverb.add(uroWord);
+                        else if (uroFl === 'noun') matrix.noun.add(uroWord);
+                        else if (uroFl === 'verb') matrix.verb.add(uroWord);
+                        else sortIntoMatrix(uroWord, matrix);
+                    });
+                }
+            });
+        }
+
+        // --- ROOT STRIPPING: Generate candidates when APIs have gaps ---
+        function stripToRoot(w) {
+            const prefixes = [
+                're', 'un', 'in', 'dis', 'over', 'under', 'mis', 'pre', 'pro',
+                'anti', 'auto', 'co', 'counter', 'de', 'en', 'em', 'ex',
+                'fore', 'inter', 'mid', 'non', 'out', 'post', 'semi',
+                'sub', 'super', 'sur', 'trans', 'ultra', 'up', 'with'
+            ];
+            const suffixes = [
+                'fulness', 'lessly', 'tion', 'sion', 'ment', 'ness', 'ity',
+                'ful', 'less', 'ing', 'ive', 'ary', 'ery', 'ory', 'ship',
+                'hood', 'dom', 'ism', 'ist', 'ance', 'ence', 'ify', 'ize',
+                'ise', 'ate', 'al', 'ous', 'ible', 'able', 'ical', 'ish',
+                'some', 'ward', 'wise', 'ly', 'ed', 'er', 'or', 'en', 'e'
+            ];
+            let root = w;
+            for (const prefix of prefixes) {
+                if (w.startsWith(prefix) && w.length > prefix.length + 3) {
+                    root = w.slice(prefix.length);
+                    break;
+                }
+            }
+            for (const suffix of suffixes) {
+                if (root.endsWith(suffix) && root.length > suffix.length + 2) {
+                    root = root.slice(0, root.length - suffix.length);
+                    break;
+                }
+            }
+            return root;
+        }
+
+        // Only run candidate lookup if matrix is still missing adjective or adverb
+        if (matrix.adjective.size === 0 || matrix.adverb.size === 0) {
+            const root = stripToRoot(word);
+            const candidates = [
+                root, root + 'e', root + 'ful', root + 'less',
+                root + 'fully', root + 'lessly', root + 'ness',
+                root + 'ment', root + 'ing', root + 'ed',
+                root + 'er', root + 'ion', root + 'ive',
+                root + 'ation', root + 'ize', root + 'ise'
+            ].filter(c => c !== word && c.length > 3);
+
+            const familyResponses = await Promise.all(
+                candidates.slice(0, 8).map(c =>
+                    fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${c}?key=${MW_DICT_KEY}`)
+                        .then(r => r.json())
+                        .then(d => ({ word: c, data: d }))
+                        .catch(() => null)
+                )
+            );
+
+            familyResponses.forEach(result => {
+                if (!result || !Array.isArray(result.data)) return;
+                const firstEntry = result.data.find(e => typeof e === 'object' && e.fl);
+                if (!firstEntry) return; // MW returned suggestions = word doesn't exist
+                const fl = firstEntry.fl.toLowerCase();
+                if (fl === 'adjective') matrix.adjective.add(result.word);
+                else if (fl === 'adverb') matrix.adverb.add(result.word);
+                else if (fl === 'noun') matrix.noun.add(result.word);
+                else if (fl === 'verb') matrix.verb.add(result.word);
+            });
+        }
+
+        // --- MW THESAURUS: Boost synonyms & antonyms ---
+        if (Array.isArray(mwThes)) {
+            mwThes.forEach(entry => {
+                if (typeof entry !== 'object') return;
+                if (entry.def) {
+                    entry.def.forEach(def => {
+                        def.sseq?.forEach(sseq => {
+                            sseq.forEach(sense => {
+                                if (sense[0] === 'sense') {
+                                    sense[1]?.syn_list?.forEach(synList => {
+                                        synList.forEach(syn => {
+                                            if (syn.wd) allSynonyms.add(syn.wd);
+                                        });
+                                    });
+                                    sense[1]?.ant_list?.forEach(antList => {
+                                        antList.forEach(ant => {
+                                            if (ant.wd) allAntonyms.add(ant.wd);
+                                        });
+                                    });
+                                }
+                            });
+                        });
+                    });
+                }
+            });
+        }
+
+        // Render Synonyms
+        const synContainer = document.getElementById('r-syns');
+        if (synContainer && allSynonyms.size > 0) {
+            synContainer.innerHTML = Array.from(allSynonyms).slice(0, 10)
+                .map(syn => `<span class="synonym-item" onclick="handleSearch('${syn}')">${syn}</span>`).join('');
+        } else if (synContainer) {
+            synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
+        }
+
+        // Render Antonyms
+        const antContainer = document.getElementById('r-ants');
+        if (antContainer && allAntonyms.size > 0) {
+            antContainer.innerHTML = Array.from(allAntonyms).slice(0, 10)
+                .map(ant => `<span class="antonym-item" onclick="handleSearch('${ant}')">${ant}</span>`).join('');
+        } else if (antContainer) {
+            antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in archive.</span>";
+        }
+
+        // Fire Matrix
+        renderMatrix(matrix);
+
+        // Populate Word Family Grid
+        const familyGrid = document.getElementById('r-family-grid');
+        if (familyGrid) {
+            const familyWords = new Set([
+                ...matrix.noun,
+                ...matrix.verb,
+                ...matrix.adjective,
+                ...matrix.adverb
+            ]);
+            familyWords.delete(word);
+            if (familyWords.size > 0) {
+                familyGrid.innerHTML = Array.from(familyWords).map(w => `
+                    <div class="family-square">
+                        <span class="tag" onclick="handleSearch('${w}')">${w}</span>
+                    </div>
+                `).join('');
+            } else {
+                familyGrid.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No related forms found.</span>";
+            }
+        }
+
+        // Update History
+        if (!history.includes(word)) {
+            history.unshift(word);
+            db.ref(userPath + '/history/' + word).set({ timestamp: Date.now() });
+        }
+        updateSidebar();
+        updateStarUI();
+
+    } catch (error) {
+        console.error("Search Engine Error:", error);
+        document.getElementById('loader').style.display = 'none';
+    }
+}
+  
+     
+
+        // --- THE SUFFIX SORTING ALGORITHM ---
+        function sortIntoMatrix(word, matrix) {
+            if (word.endsWith('ly') && !word.endsWith('ply')) {
+                matrix.adverb.add(word);
+            } else if (word.match(/(tion|sion|ment|ness|ity|ism|ist|er|or|ance|ence|ship)$/)) {
+                matrix.noun.add(word);
+            } else if (word.match(/(ate|ify|ize|ise|en)$/)) {
+                matrix.verb.add(word);
+            } else if (word.match(/(ic|al|ous|ive|able|ible|ful|less|y)$/)) {
+                matrix.adjective.add(word);
+            } else {
+                matrix.noun.add(word);
+            }
+        }
+
+        // --- MATRIX RENDERER ---
+        function renderMatrix(matrix) {
+            document.getElementById('morph-matrix').style.display = 'grid';
+
+            const columns = ['noun', 'verb', 'adjective', 'adverb'];
+            columns.forEach(col => {
+                const container = document.getElementById(`col-${col}`);
+                if (!container) return; 
+                container.innerHTML = ""; 
+
+                if (matrix[col].size > 0) {
+                    Array.from(matrix[col]).forEach(w => {
+                        const div = document.createElement('div');
+                        div.className = 'matrix-word';
+                        div.innerText = w;
+                        div.onclick = () => handleSearch(w); 
+                        container.appendChild(div);
+                    });
+                } else {
+                    container.innerHTML = `<span class="matrix-empty">-</span>`;
+                }
+            });
+        }
+ 
+        
+
+        // 6. FEATURES: Cloud TTS API integration
+        async function speak(l) {
+            if (!lastWord || l === 'ar') return;
+
+const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_KEY}`;            
+            const requestBody = {
+                input: { text: lastWord },
+                voice: {
+                    languageCode: "en-US",
+                    name: "en-US-Chirp3-HD-Laomedeia"
+                },
+                audioConfig: { audioEncoding: 'MP3', speakingRate: 0.9 }
+            };
+
+            try {
+                const response = await fetch(ttsUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error("API Error:", data.error.message);
+                    alert("TTS Error: Did you enable the API in Google Cloud Console?");
+                    return;
+                }
+
+                const audio = new Audio("data:audio/mp3;base64," + data.audioContent);
+                audio.play();
+                
+            } catch (error) {
+                console.error("Audio generation failed:", error);
+            }
+        }
+
+        function toggleBookmark() { 
+            if (bookmarks.includes(lastWord)) db.ref(userPath + '/bookmarks/' + lastWord).remove();
+            else db.ref(userPath + '/bookmarks/' + lastWord).set(true); 
+        }
+
+        function updateStarUI() { 
+            const s = document.getElementById('mainStar'); 
+            if (bookmarks.includes(lastWord)) s.classList.add('active'); else s.classList.remove('active'); 
+        }
+
+        function updateSidebar() {
+            const c = document.getElementById('list-items'); c.innerHTML = "";
+            const list = currentTab === 'history' ? history : bookmarks;
+            list.forEach(w => {
+                const item = document.createElement('div'); item.className = 'list-item';
+                item.innerHTML = `<span class="item-text" onclick="handleSearch('${w}')">${w}</span>
+                <span style="color:#cbd5e1; cursor:pointer;" onclick="event.stopPropagation(); db.ref(userPath+'/'+currentTab+'/'+'${w}').remove()">✕</span>`;
+                c.appendChild(item);
+            });
+            
+            document.getElementById('history-count').innerText = history.length;
+            document.getElementById('pinned-count').innerText = bookmarks.length;
+        }
+
+        function setTab(t) { 
+            currentTab = t; 
+            document.getElementById('tab-history').classList.toggle('active', t==='history'); 
+            document.getElementById('tab-bookmarks').classList.toggle('active', t==='bookmarks'); 
+            updateSidebar(); 
+        }
+
+        function clearCloud() { 
+            if(confirm("Permanently purge cloud history?")) db.ref(userPath).remove(); 
+        }
+
+        function exportData() { 
+            const b = new Blob([JSON.stringify({history, bookmarks}, null, 2)], {type: 'application/json'}); 
+            const a = document.createElement('a'); a.href = URL.createObjectURL(b); 
+            a.download = 'LinguistHub_Backup.json'; a.click(); 
+        }
+    </script>
+</body>
+</html>
