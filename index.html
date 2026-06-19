@@ -196,333 +196,170 @@
     </main>
 
     <script>
-        const firebaseConfig = { 
-            apiKey: "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc", 
-            authDomain: "lingustichub.firebaseapp.com", 
-            databaseURL: "https://lingustichub-default-rtdb.firebaseio.com/", 
-            projectId: "lingustichub" 
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const WORDS_API_KEY = "242b9f742fmsh60139fea9266dd6p1d0d10jsnc099683877b9";
-        const GOOGLE_KEY = "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc";
+const firebaseConfig = { 
+        apiKey: "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc", 
+        authDomain: "lingustichub.firebaseapp.com", 
+        databaseURL: "https://lingustichub-default-rtdb.firebaseio.com/", 
+        projectId: "lingustichub" 
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const GOOGLE_KEY = "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc";
 
-        let history = [], bookmarks = [], lastWord = "", lastTrans = "", currentTab = 'history', userPath = "";
+    let history = [], bookmarks = [], lastWord = "", lastTrans = "", currentTab = 'history', userPath = "";
 
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
-        function toggleTheme() { 
-            const c = document.body.getAttribute('data-theme'); 
-            document.body.setAttribute('data-theme', c === 'dark' ? 'light' : 'dark'); 
-        }
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+    function toggleTheme() { 
+        const c = document.body.getAttribute('data-theme'); 
+        document.body.setAttribute('data-theme', c === 'dark' ? 'light' : 'dark'); 
+    }
 
-        function toggleClearBtn() {
-            const input = document.getElementById('wordInput');
-            const btn = document.getElementById('clearBtn');
-            btn.style.display = input.value.length > 0 ? 'block' : 'none';
-        }
+    function toggleClearBtn() {
+        const input = document.getElementById('wordInput');
+        const btn = document.getElementById('clearBtn');
+        btn.style.display = input.value.length > 0 ? 'block' : 'none';
+    }
 
-        function clearSearchInput() {
-            const input = document.getElementById('wordInput');
-            input.value = "";
-            toggleClearBtn();
-            input.focus();
-        }
+    function clearSearchInput() {
+        const input = document.getElementById('wordInput');
+        input.value = "";
+        toggleClearBtn();
+        input.focus();
+    }
 
-        firebase.auth().onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('login-overlay').style.display = 'none';
-                userPath = 'users/' + user.uid;
-                db.ref(userPath + '/history').on('value', s => {
-                    const data = s.val() || {};
-                    history = Object.keys(data).sort((a,b) => data[b].timestamp - data[a].timestamp);
-                    updateSidebar();
-                });
-                db.ref(userPath + '/bookmarks').on('value', s => {
-                    bookmarks = Object.keys(s.val() || {});
-                    updateSidebar();
-                    updateStarUI();
-                });
-            } else {
-                document.getElementById('login-overlay').style.display = 'flex';
-            }
-        });
-
-        function login() {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            firebase.auth().signInWithPopup(provider).catch(error => {
-                console.error(error);
-                alert("Login Blocked: " + error.message);
+    firebase.auth().onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('login-overlay').style.display = 'none';
+            userPath = 'users/' + user.uid;
+            db.ref(userPath + '/history').on('value', s => {
+                const data = s.val() || {};
+                history = Object.keys(data).sort((a,b) => data[b].timestamp - data[a].timestamp);
+                updateSidebar();
             });
-        }
-
-        // --- ROOT EXTRACTOR FIX ---
-        function stripToDeepestRoot(word) {
-            if (!word) return "";
-            let root = word.toLowerCase();
-            // Expanded list of suffixes to securely trim long words like "reinforcement"
-            const suffixes = ['ization', 'ability', 'fulness', 'ation', 'ement', 'ness', 'tion', 'sion', 'ment', 'able', 'ible', 'ally', 'ive', 'ing', 'est', 'ous', 'ful', 'ly', 'er', 'ed', 'al', 'ic', 'y', 's'];
-            
-            for (let suf of suffixes) {
-                if (root.endsWith(suf) && root.length - suf.length >= 3) {
-                    root = root.slice(0, -suf.length);
-                    break; 
-                }
-            }
-            return root;
-        }
-
-        // --- THE HYBRID ENGINE ---
-        async function handleSearch(searchWord) {
-            const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
-            if (!word) return;
-
-            lastWord = word;
-            document.getElementById('wordInput').value = word;
-            document.getElementById('loader').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
-            document.getElementById('clearBtn').style.display = 'block';
-
-            try {
-                const firstLetter = word.charAt(0);
-
-                // Fetch WordsAPI (Rich Data), Google (Arabic), and Local JSON (Matrix Trees) at the exact same time
-                const [wordsResponse, transResponse, localResponse] = await Promise.all([
-                    fetch(`https://wordsapiv1.p.rapidapi.com/words/${word}`, {
-                        method: "GET",
-                        headers: { "x-rapidapi-key": WORDS_API_KEY, "x-rapidapi-host": "wordsapiv1.p.rapidapi.com" }
-                    }).catch(() => null),
-                    fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_KEY}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ q: word, target: 'ar' })
-                    }).catch(() => null),
-                    fetch(`./by-letter-enriched/${firstLetter}.json`).catch(() => null)
-                ]);
-
-                document.getElementById('loader').style.display = 'none';
-
-                let data = null;
-                if (wordsResponse && wordsResponse.ok) {
-                    data = await wordsResponse.json();
-                }
-
-                if (!data || !data.results || data.results.length === 0) {
-                    alert("Word not found in deep archive.");
-                    return;
-                }
-
-                // 1. RENDER RICH DATA (Definitions & Synonyms from WordsAPI)
-                document.getElementById('results').style.display = 'block';
-                document.getElementById('r-word').innerText = word;
-                
-                const arabicBox = document.getElementById('arabic-box-container');
-                if (transResponse && transResponse.ok) {
-                    const transData = await transResponse.json();
-                    if (transData?.data?.translations?.[0]) {
-                        document.getElementById('r-trans').innerText = transData.data.translations[0].translatedText;
-                        arabicBox.style.display = 'block';
-                    } else {
-                        arabicBox.style.display = 'none';
-                    }
-                }
-
-                if (data.syllables && data.syllables.list) {
-                    document.getElementById('r-syll').innerText = data.syllables.list.join('·');
-                } else {
-                    document.getElementById('r-syll').innerText = word;
-                }
-
-                let allSynonyms = new Set();
-                let allAntonyms = new Set();
-                let matrix = { noun: new Set(), verb: new Set(), adjective: new Set(), adverb: new Set() };
-
-                // Parse local JSON once — used for BOTH synonyms/antonyms AND matrix
-                let localEntry = null;
-                if (localResponse && localResponse.ok) {
-                    try {
-                        const localData = await localResponse.json();
-                        // Support both object-keyed format: { "do": {...} }
-                        // and array format: [ { "word": "do", ... }, ... ]
-                        if (Array.isArray(localData)) {
-                            localEntry = localData.find(e => (e.word || e) === word) || null;
-                        } else {
-                            localEntry = localData[word] || null;
-                        }
-                    } catch(e) {
-                        console.warn("Local JSON parse error:", e);
-                    }
-                }
-
-                const defContainer = document.getElementById('r-def'); 
-                if (defContainer) {
-                    defContainer.innerHTML = data.results.slice(0, 4).map((entry, index) => {
-                        // Collect synonyms/antonyms from WordsAPI as a secondary source
-                        if (entry.synonyms) entry.synonyms.forEach(s => allSynonyms.add(s));
-                        if (entry.antonyms) entry.antonyms.forEach(a => allAntonyms.add(a));
-
-                        const pos = entry.partOfSpeech;
-                        if (index === 0 && pos) document.getElementById('r-pos').innerText = pos;
-                        const displayPos = pos ? `<i>${pos}</i>` : '';
-                        
-                        return `<div style="margin-bottom: 8px; font-size: 0.9rem; color: var(--text);">
-                                    <strong>${index + 1}.</strong> <span style="color: var(--accent);">${displayPos}</span> ${entry.definition || ''}
-                                </div>`;
-                    }).join('');
-                }
-
-                // FIX: Pull synonyms/antonyms from local JSON first (richer source),
-                // then supplement with whatever WordsAPI already collected above.
-                if (localEntry) {
-                    const localSyns = localEntry.synonyms || localEntry.synonym || [];
-                    const localAnts = localEntry.antonyms || localEntry.antonym || [];
-                    // Local JSON takes priority — prepend before API results
-                    const mergedSyns = new Set([...localSyns, ...allSynonyms]);
-                    const mergedAnts = new Set([...localAnts, ...allAntonyms]);
-                    allSynonyms = mergedSyns;
-                    allAntonyms = mergedAnts;
-                }
-
-                const synContainer = document.getElementById('r-syns');
-                if (synContainer && allSynonyms.size > 0) {
-                    synContainer.innerHTML = Array.from(allSynonyms).slice(0, 10)
-                        .map(syn => `<span class="synonym-item" onclick="handleSearch('${syn}')">${syn}</span>`).join('');
-                } else if (synContainer) {
-                    synContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No synonyms in archive.</span>";
-                }
-
-                const antContainer = document.getElementById('r-ants');
-                if (antContainer && allAntonyms.size > 0) {
-                    antContainer.innerHTML = Array.from(allAntonyms).slice(0, 10)
-                        .map(ant => `<span class="antonym-item" onclick="handleSearch('${ant}')">${ant}</span>`).join('');
-                } else if (antContainer) {
-                    antContainer.innerHTML = "<span style='font-size:0.8rem; opacity:0.5;'>No antonyms in archive.</span>";
-                }
-
-                // 2. RENDER MATRIX - read directly from structured WordNet forms, no suffix guessing
-                if (localEntry && localEntry.forms) {
-                    const f = localEntry.forms;
-                    (f.noun      || []).forEach(w => matrix.noun.add(w));
-                    (f.verb      || []).forEach(w => matrix.verb.add(w));
-                    (f.adjective || []).forEach(w => matrix.adjective.add(w));
-                    (f.adverb    || []).forEach(w => matrix.adverb.add(w));
-                    // Always ensure searched word appears in its correct column
-                    const mainPos = data.results[0]?.partOfSpeech || 'noun';
-                    if (matrix[mainPos]) matrix[mainPos].add(word);
-                } else {
-                    // Fallback: WordsAPI derivationallyRelatedForms + suffix guessing
-                    data.results.forEach(entry => {
-                        if (entry.derivationallyRelatedForms) {
-                            entry.derivationallyRelatedForms.forEach(w => sortIntoMatrix(w, matrix));
-                        }
-                    });
-                    const mainPos = data.results[0]?.partOfSpeech || 'noun';
-                    if (matrix[mainPos]) matrix[mainPos].add(word);
-                }
-
-                renderMatrix(matrix);
-                
-                if (!history.includes(word)) {
-                    history.unshift(word);
-                    db.ref(userPath + '/history/' + word).set({ timestamp: Date.now() });
-                }
+            db.ref(userPath + '/bookmarks').on('value', s => {
+                bookmarks = Object.keys(s.val() || {});
                 updateSidebar();
                 updateStarUI();
-
-            } catch (error) {
-                console.error("Search Engine Error:", error);
-                document.getElementById('loader').style.display = 'none';
-            }
+            });
         }
+    });
 
-        function sortIntoMatrix(word, matrix) {
-            if (word.endsWith('ly') && !word.endsWith('ply')) {
-                matrix.adverb.add(word);
-            } else if (word.match(/(tion|sion|ment|ness|ity|ism|ist|er|or|ance|ence|ship)$/)) {
-                matrix.noun.add(word);
-            } else if (word.match(/(ate|ify|ize|ise|en)$/)) {
-                matrix.verb.add(word);
-            } else if (word.match(/(ic|al|ous|ive|able|ible|ful|less|y)$/)) {
-                matrix.adjective.add(word);
+    function login() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        firebase.auth().signInWithPopup(provider).catch(error => {
+            console.error(error);
+            alert("Login Blocked: " + error.message);
+        });
+    }
+
+    // --- THE LOCAL HYBRID ENGINE ---
+    async function handleSearch(searchWord) {
+        const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
+        if (!word) return;
+
+        lastWord = word;
+        document.getElementById('wordInput').value = word;
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('results').style.display = 'none';
+        document.getElementById('clearBtn').style.display = 'block';
+
+        try {
+            const firstLetter = word.charAt(0);
+            const response = await fetch(`./structured_${firstLetter}.json`);
+            
+            if (!response.ok) throw new Error('Could not load dictionary file.');
+
+            const allData = await response.json();
+            const entry = allData[word];
+
+            if (!entry) {
+                alert("Word not found in local archive.");
+                return;
+            }
+
+            // 1. Render Basic Info
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('r-word').innerText = word;
+            document.getElementById('r-pos').innerText = entry.pos || "N/A";
+            document.getElementById('r-syll').innerText = entry.syllables ? entry.syllables.join('·') : word;
+
+            // 2. Render Definition
+            document.getElementById('r-def').innerHTML = entry.definition || "No definition available.";
+
+            // 3. Render Synonyms/Antonyms
+            const synContainer = document.getElementById('r-syns');
+            const antContainer = document.getElementById('r-ants');
+            
+            synContainer.innerHTML = (entry.synonyms || []).map(s => 
+                `<span class="synonym-item" onclick="handleSearch('${s}')">${s}</span>`).join('') || "None";
+                
+            antContainer.innerHTML = (entry.antonyms || []).map(a => 
+                `<span class="antonym-item" onclick="handleSearch('${a}')">${a}</span>`).join('') || "None";
+
+            // 4. Render Matrix (The Morphological Families)
+            const matrixContainer = document.getElementById('morph-matrix');
+            if (entry.forms) {
+                matrixContainer.style.display = 'grid';
+                document.getElementById('col-noun').innerText = (entry.forms.noun || []).join(', ') || "-";
+                document.getElementById('col-verb').innerText = (entry.forms.verb || []).join(', ') || "-";
+                document.getElementById('col-adjective').innerText = (entry.forms.adjective || []).join(', ') || "-";
+                document.getElementById('col-adverb').innerText = (entry.forms.adverb || []).join(', ') || "-";
             } else {
-                matrix.noun.add(word);
+                matrixContainer.style.display = 'none';
             }
-        }
 
-        function renderMatrix(matrix) {
-            document.getElementById('morph-matrix').style.display = 'grid';
-            const columns = ['noun', 'verb', 'adjective', 'adverb'];
-            columns.forEach(col => {
-                const container = document.getElementById(`col-${col}`);
-                if (!container) return; 
-                container.innerHTML = ""; 
+            // 5. Save to History
+            if (!history.includes(word)) {
+                history.unshift(word);
+                db.ref(userPath + '/history/' + word).set({ timestamp: Date.now() });
+            }
+            updateSidebar();
+            updateStarUI();
 
-                if (matrix[col].size > 0) {
-                    Array.from(matrix[col]).forEach(w => {
-                        const div = document.createElement('div');
-                        div.className = 'matrix-word';
-                        div.innerText = w;
-                        div.onclick = () => handleSearch(w); 
-                        container.appendChild(div);
-                    });
-                } else {
-                    container.innerHTML = `<span class="matrix-empty">-</span>`;
-                }
-            });
+        } catch (error) {
+            console.error("Local Search Error:", error);
+        } finally {
+            document.getElementById('loader').style.display = 'none';
         }
+    }
 
-        async function speak(l) {
-            if (!lastWord || l === 'ar') return;
-            const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_KEY}`;            
-            const requestBody = {
-                input: { text: lastWord },
-                voice: { languageCode: "en-US", name: "en-US-Chirp3-HD-Laomedeia" },
-                audioConfig: { audioEncoding: 'MP3', speakingRate: 0.9 }
-            };
-            try {
-                const response = await fetch(ttsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) });
-                const data = await response.json();
-                if (data.error) { alert("TTS Error: API issues"); return; }
-                const audio = new Audio("data:audio/mp3;base64," + data.audioContent);
-                audio.play();
-            } catch (error) { console.error("Audio generation failed:", error); }
-        }
+    function toggleBookmark() { 
+        if (bookmarks.includes(lastWord)) db.ref(userPath + '/bookmarks/' + lastWord).remove();
+        else db.ref(userPath + '/bookmarks/' + lastWord).set(true); 
+    }
 
-        function toggleBookmark() { 
-            if (bookmarks.includes(lastWord)) db.ref(userPath + '/bookmarks/' + lastWord).remove();
-            else db.ref(userPath + '/bookmarks/' + lastWord).set(true); 
-        }
+    function updateStarUI() { 
+        const s = document.getElementById('mainStar'); 
+        if (bookmarks.includes(lastWord)) s.classList.add('active'); else s.classList.remove('active'); 
+    }
 
-        function updateStarUI() { 
-            const s = document.getElementById('mainStar'); 
-            if (bookmarks.includes(lastWord)) s.classList.add('active'); else s.classList.remove('active'); 
-        }
+    function updateSidebar() {
+        const c = document.getElementById('list-items'); c.innerHTML = "";
+        const list = currentTab === 'history' ? history : bookmarks;
+        list.forEach(w => {
+            const item = document.createElement('div'); item.className = 'list-item';
+            item.innerHTML = `<span class="item-text" onclick="handleSearch('${w}')">${w}</span>
+            <span style="color:#cbd5e1; cursor:pointer;" onclick="event.stopPropagation(); db.ref(userPath+'/'+currentTab+'/'+'${w}').remove()">✕</span>`;
+            c.appendChild(item);
+        });
+        document.getElementById('history-count').innerText = history.length;
+        document.getElementById('pinned-count').innerText = bookmarks.length;
+    }
 
-        function updateSidebar() {
-            const c = document.getElementById('list-items'); c.innerHTML = "";
-            const list = currentTab === 'history' ? history : bookmarks;
-            list.forEach(w => {
-                const item = document.createElement('div'); item.className = 'list-item';
-                item.innerHTML = `<span class="item-text" onclick="handleSearch('${w}')">${w}</span>
-                <span style="color:#cbd5e1; cursor:pointer;" onclick="event.stopPropagation(); db.ref(userPath+'/'+currentTab+'/'+'${w}').remove()">✕</span>`;
-                c.appendChild(item);
-            });
-            document.getElementById('history-count').innerText = history.length;
-            document.getElementById('pinned-count').innerText = bookmarks.length;
-        }
+    function setTab(t) { 
+        currentTab = t; 
+        document.getElementById('tab-history').classList.toggle('active', t==='history'); 
+        document.getElementById('tab-bookmarks').classList.toggle('active', t==='bookmarks'); 
+        updateSidebar(); 
+    }
 
-        function setTab(t) { 
-            currentTab = t; 
-            document.getElementById('tab-history').classList.toggle('active', t==='history'); 
-            document.getElementById('tab-bookmarks').classList.toggle('active', t==='bookmarks'); 
-            updateSidebar(); 
-        }
-
-        function clearCloud() { if(confirm("Permanently purge cloud history?")) db.ref(userPath).remove(); }
-        function exportData() { 
-            const b = new Blob([JSON.stringify({history, bookmarks}, null, 2)], {type: 'application/json'}); 
-            const a = document.createElement('a'); a.href = URL.createObjectURL(b); 
-            a.download = 'LinguistHub_Backup.json'; a.click(); 
-        }
+    function clearCloud() { if(confirm("Permanently purge cloud history?")) db.ref(userPath).remove(); }
+    function exportData() { 
+        const b = new Blob([JSON.stringify({history, bookmarks}, null, 2)], {type: 'application/json'}); 
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); 
+        a.download = 'LinguistHub_Backup.json'; a.click(); 
+    }
     </script>
+    
 </body>
 </html>
