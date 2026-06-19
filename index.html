@@ -272,7 +272,8 @@ const firebaseConfig = {
             if (!response.ok) throw new Error('Could not load dictionary file.');
 
             const allData = await response.json();
-            const entry = allData[word];
+            console.log("File Data Structure:", allData); // See what's inside
+            const entry = allData[word]; // Still try to find it
 
             if (!entry) {
                 alert("Word not found in local archive.");
