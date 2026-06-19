@@ -255,9 +255,13 @@ const firebaseConfig = {
     }
 
     // --- THE LOCAL HYBRID ENGINE ---
+   
+    // --- THE FIXED LOCAL HYBRID ENGINE ---
     async function handleSearch(searchWord) {
         const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
         if (!word) return;
+
+        let allData = null; // Declare it safely here
 
         lastWord = word;
         document.getElementById('wordInput').value = word;
@@ -267,17 +271,14 @@ const firebaseConfig = {
 
         try {
             const firstLetter = word.charAt(0);
+            // Fetching the structured file as we discussed
             const response = await fetch(`./by-letter/structured_${firstLetter}.json`);
             
             if (!response.ok) throw new Error('Could not load dictionary file.');
 
-           // REPLACE your current "const entry = allData[word];" line with this:
-const keys = 
-Object.keys(allData);
-console.log("Top 5 keys in this file:", keys.slice(0, 5));
-console.log("RAW DATA FROM FILE:", allData);
+            allData = await response.json();
+            const entry = allData[word];
 
-const entry = allData[word];
             if (!entry) {
                 alert("Word not found in local archive.");
                 return;
@@ -324,11 +325,11 @@ const entry = allData[word];
 
         } catch (error) {
             console.error("Local Search Error:", error);
+            alert("Search failed. See console for details.");
         } finally {
             document.getElementById('loader').style.display = 'none';
         }
     }
-
     function toggleBookmark() { 
         if (bookmarks.includes(lastWord)) db.ref(userPath + '/bookmarks/' + lastWord).remove();
         else db.ref(userPath + '/bookmarks/' + lastWord).set(true); 
