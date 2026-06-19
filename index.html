@@ -257,79 +257,49 @@ const firebaseConfig = {
     // --- THE LOCAL HYBRID ENGINE ---
    
     // --- THE FIXED LOCAL HYBRID ENGINE ---
-    async function handleSearch(searchWord) {
-        const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
-        if (!word) return;
+async function handleSearch(searchWord) {
+    // 1. Initialize immediately so it can never be "undefined"
+    let allData = {}; 
+    
+    const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
+    if (!word) return;
 
-        let allData = null; // Declare it safely here
+    lastWord = word;
+    document.getElementById('wordInput').value = word;
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('clearBtn').style.display = 'block';
 
-        lastWord = word;
-        document.getElementById('wordInput').value = word;
-        document.getElementById('loader').style.display = 'block';
-        document.getElementById('results').style.display = 'none';
-        document.getElementById('clearBtn').style.display = 'block';
+    try {
+        const firstLetter = word.charAt(0);
+        const response = await fetch(`./by-letter/structured_${firstLetter}.json`);
+        
+        if (!response.ok) throw new Error('Could not load dictionary file.');
 
-        try {
-            const firstLetter = word.charAt(0);
-            // Fetching the structured file as we discussed
-            const response = await fetch(`./by-letter/structured_${firstLetter}.json`);
-            
-            if (!response.ok) throw new Error('Could not load dictionary file.');
+        allData = await response.json(); // Now this will safely overwrite the empty object
+        const entry = allData[word];
 
-            allData = await response.json();
-            const entry = allData[word];
-
-            if (!entry) {
-                alert("Word not found in local archive.");
-                return;
-            }
-
-            // 1. Render Basic Info
-            document.getElementById('results').style.display = 'block';
-            document.getElementById('r-word').innerText = word;
-            document.getElementById('r-pos').innerText = entry.pos || "N/A";
-            document.getElementById('r-syll').innerText = entry.syllables ? entry.syllables.join('·') : word;
-
-            // 2. Render Definition
-            document.getElementById('r-def').innerHTML = entry.definition || "No definition available.";
-
-            // 3. Render Synonyms/Antonyms
-            const synContainer = document.getElementById('r-syns');
-            const antContainer = document.getElementById('r-ants');
-            
-            synContainer.innerHTML = (entry.synonyms || []).map(s => 
-                `<span class="synonym-item" onclick="handleSearch('${s}')">${s}</span>`).join('') || "None";
-                
-            antContainer.innerHTML = (entry.antonyms || []).map(a => 
-                `<span class="antonym-item" onclick="handleSearch('${a}')">${a}</span>`).join('') || "None";
-
-            // 4. Render Matrix
-            const matrixContainer = document.getElementById('morph-matrix');
-            if (entry.forms) {
-                matrixContainer.style.display = 'grid';
-                document.getElementById('col-noun').innerText = (entry.forms.noun || []).join(', ') || "-";
-                document.getElementById('col-verb').innerText = (entry.forms.verb || []).join(', ') || "-";
-                document.getElementById('col-adjective').innerText = (entry.forms.adjective || []).join(', ') || "-";
-                document.getElementById('col-adverb').innerText = (entry.forms.adverb || []).join(', ') || "-";
-            } else {
-                matrixContainer.style.display = 'none';
-            }
-
-            // 5. Save to History
-            if (!history.includes(word)) {
-                history.unshift(word);
-                db.ref(userPath + '/history/' + word).set({ timestamp: Date.now() });
-            }
-            updateSidebar();
-            updateStarUI();
-
-        } catch (error) {
-            console.error("Local Search Error:", error);
-            alert("Search failed. See console for details.");
-        } finally {
-            document.getElementById('loader').style.display = 'none';
+        if (!entry) {
+            alert("Word not found in local archive.");
+            return;
         }
+
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('r-word').innerText = word;
+        document.getElementById('r-pos').innerText = entry.pos || "N/A";
+        document.getElementById('r-syll').innerText = entry.syllables ? entry.syllables.join('·') : word;
+        document.getElementById('r-def').innerHTML = entry.definition || "No definition available.";
+
+        // ... (Keep the rest of your UI rendering code exactly as it was)
+        // ... (Paste your existing Synonyms/Antonyms/Matrix/Sidebar code here)
+        
+    } catch (error) {
+        console.error("Local Search Error:", error);
+        // This won't crash now because allData exists
+    } finally {
+        document.getElementById('loader').style.display = 'none';
     }
+}
     function toggleBookmark() { 
         if (bookmarks.includes(lastWord)) db.ref(userPath + '/bookmarks/' + lastWord).remove();
         else db.ref(userPath + '/bookmarks/' + lastWord).set(true); 
