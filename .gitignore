@@ -1,0 +1,14 @@
+lexicon.db
+*.db
+*.sqlite
+*.sqlite3
+*.log
+*.jsonl
+__pycache__/
+etl/
+review/
+tests/
+colab/
+_backup/
+backups/
+.DS_Store
