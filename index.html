@@ -452,38 +452,45 @@
       });
     }
 
+    let idbInstance = null;
+    async function getDB() {
+      if (idbInstance) return idbInstance;
+      idbInstance = await Promise.race([
+        openIDB(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("IDB Timeout")), 5000))
+      ]);
+      idbInstance.onversionchange = () => { idbInstance.close(); idbInstance = null; };
+      idbInstance.onclose = () => { idbInstance = null; };
+      return idbInstance;
+    }
+
     async function queryLexicon(query) {
       const term = query.trim().toLowerCase();
       try {
-        const db = await Promise.race([
-          openIDB(),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('IDB Timeout')), 1200))
-        ]);
-
-        if (!db || !db.objectStoreNames.contains('clusters')) return null;
+        const db = await getDB();
+        if (!db || !db.objectStoreNames.contains("clusters")) return null;
 
         return await new Promise((resolve) => {
-          const tx = db.transaction('clusters', 'readonly');
+          const tx = db.transaction("clusters", "readonly");
           tx.onerror = () => resolve(null);
           tx.onabort = () => resolve(null);
 
-          const store = tx.objectStore('clusters');
-          const directReq = store.get(term);
-
-          directReq.onsuccess = () => {
-            if (directReq.result) return resolve(directReq.result);
+          const store = tx.objectStore("clusters");
+          const req = store.get(term);
+          req.onsuccess = () => {
+            if (req.result) return resolve(req.result);
             try {
-              const stemReq = store.index('stems').get(term);
+              const stemReq = store.index("stems").get(term);
               stemReq.onsuccess = () => resolve(stemReq.result || null);
               stemReq.onerror = () => resolve(null);
             } catch (_) {
               resolve(null);
             }
           };
-          directReq.onerror = () => resolve(null);
+          req.onerror = () => resolve(null);
         });
       } catch (err) {
-        console.warn('[IDB Query Degraded]', err);
+        console.warn("[IDB Query Degraded]", err);
         return null;
       }
     }
@@ -557,6 +564,17 @@ async function ensureLexiconHydrated() {
       arBadge.innerText = '—';
     }
 
+    
+    function updateStarUI() {
+      const starBtn = document.getElementById("starBtn");
+      if (!starBtn) return;
+      const cur = window.lastWord || document.getElementById("r-word")?.innerText?.trim().toLowerCase();
+      if (!cur) return;
+      const pinned = Boolean(window.bookmarks && window.bookmarks[cur]);
+      starBtn.classList.toggle("active", pinned);
+      starBtn.setAttribute("aria-pressed", pinned ? "true" : "false");
+    }
+    
     async function handleSearch(searchWord) {
       const input = document.getElementById('wordInput');
       const word = (searchWord || input.value).trim().toLowerCase();
@@ -641,10 +659,15 @@ async function ensureLexiconHydrated() {
           }
 
           // Persistence
-          if (userPath && auth.currentUser) {
-            db.ref(userPath + '/history/' + cluster.word).set({ timestamp: Date.now() });
-          }
-          updateStarUI();
+          // Safe Firebase Sync
+          try {
+            const fbAuth = (typeof auth !== "undefined") ? auth : (window.firebase?.auth ? window.firebase.auth() : null);
+            const fbDb = (typeof db !== "undefined") ? db : (window.firebase?.database ? window.firebase.database() : null);
+            if (window.userPath && fbAuth?.currentUser && fbDb) {
+              fbDb.ref(window.userPath + "/history/" + cluster.word).set({ timestamp: Date.now() });
+            }
+          } catch (_) {}
+          if (typeof updateStarUI === "function") updateStarUI();
 
           if (results) results.style.display = 'block';
         } else {
