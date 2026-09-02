@@ -1,17 +1,27 @@
 {
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
   "name": "LinguistHub Master",
   "short_name": "LinguistHub",
   "description": "Linguistic Research & Archive Hub",
-  "start_url": "index.html",
+  "id": "/LinguistHub/",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#f1f5f9",
   "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "./icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
