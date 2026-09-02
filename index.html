@@ -1,29 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>LinguistHub Master</title>
 
-  <!-- Fonts: Plus Jakarta Sans & Marhey -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Marhey:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- PWA & Mobile Meta -->
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#1d64ec">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="./icon.png">
 
-  <!-- Firebase 8.x Infrastructure -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <style>
-    :root {
+    :root[data-theme="light"] {
       --lh-bg: #edf2f7;
       --lh-card-bg: #ffffff;
       --lh-sub-card-bg: #f0f4f8;
@@ -38,13 +35,33 @@
       --lh-synonym-text: #1d64ec;
       --lh-antonym-bg: #fef3c7;
       --lh-antonym-text: #b45309;
+    }
+
+    :root[data-theme="dark"] {
+      --lh-bg: #0b1120;
+      --lh-card-bg: #1e293b;
+      --lh-sub-card-bg: #0f172a;
+      --lh-primary-blue: #38bdf8;
+      --lh-primary-hover: #0ea5e9;
+      --lh-accent-orange: #fbbf24;
+      --lh-text-primary: #f8fafc;
+      --lh-text-muted: #94a3b8;
+      --lh-text-white: #ffffff;
+      --lh-border: #334155;
+      --lh-synonym-bg: #1e3a5f;
+      --lh-synonym-text: #38bdf8;
+      --lh-antonym-bg: #452b12;
+      --lh-antonym-text: #fbbf24;
+    }
+
+    :root {
       --lh-radius-sm: 8px;
       --lh-radius-md: 14px;
       --lh-radius-lg: 20px;
       --lh-radius-xl: 28px;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; transition: background-color 0.15s ease, color 0.15s ease; }
     body { background-color: var(--lh-bg); color: var(--lh-text-primary); display: flex; height: 100vh; overflow: hidden; }
 
     #sidebar { width: 320px; background: var(--lh-card-bg); border-right: 1px solid var(--lh-border); display: flex; flex-direction: column; transition: transform 0.2s ease; z-index: 20; }
@@ -52,6 +69,9 @@
     #main-content { flex: 1; display: flex; flex-direction: column; position: relative; overflow-y: auto; padding-bottom: 3rem; }
 
     header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--lh-border); display: flex; justify-content: space-between; align-items: center; background: var(--lh-card-bg); }
+    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .theme-toggle-btn { background: var(--lh-sub-card-bg); border: 1px solid var(--lh-border); font-size: 1.1rem; cursor: pointer; border-radius: var(--lh-radius-sm); padding: 0.4rem 0.6rem; }
+
     .btn { background: var(--lh-primary-blue); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: var(--lh-radius-sm); cursor: pointer; font-weight: 600; }
     .btn:hover { background: var(--lh-primary-hover); }
     .btn-secondary { background: transparent; border: 1px solid var(--lh-border); color: var(--lh-text-primary); padding: 0.4rem 0.75rem; border-radius: var(--lh-radius-sm); cursor: pointer; font-weight: 600; }
@@ -68,9 +88,8 @@
     .word-header { display: flex; justify-content: space-between; align-items: center; }
     .word-heading-group { display: flex; align-items: center; gap: 0.75rem; }
     .word-title { font-size: 2.25rem; font-weight: 800; text-transform: capitalize; color: var(--lh-text-primary); }
-    .audio-trigger { background: transparent; border: none; cursor: pointer; color: var(--lh-primary-blue); display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 50%; transition: opacity 0.15s; }
-    .audio-trigger:hover { opacity: 0.8; }
-    .star-icon { cursor: pointer; font-size: 1.8rem; color: #cbd5e1; transition: color 0.15s; }
+    .audio-trigger { background: transparent; border: none; cursor: pointer; color: var(--lh-primary-blue); display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 50%; }
+    .star-icon { cursor: pointer; font-size: 1.8rem; color: var(--lh-border); }
     .star-icon.active { color: #eab308; }
 
     .pos-tag-group { margin-top: 0.25rem; margin-bottom: 1.25rem; }
@@ -80,32 +99,27 @@
     .arabic-badge-container { display: flex; justify-content: center; margin: 0.5rem 0 1.5rem; min-height: 54px; }
     .arabic-badge { background-color: var(--lh-primary-blue); color: var(--lh-text-white); font-family: 'Marhey', system-ui, sans-serif; font-size: 1.6rem; font-weight: 700; padding: 0.5rem 2.2rem; border-radius: var(--lh-radius-md); direction: rtl; text-align: center; }
 
-    .definition-container { background-color: var(--lh-sub-card-bg); border-radius: var(--lh-radius-md); padding: 1.25rem 1.5rem; position: relative; overflow: hidden; font-size: 0.95rem; color: var(--lh-text-primary); margin-bottom: 1.25rem; }
-    .definition-container::before { content: ''; position: absolute; left: 0; top: 12%; bottom: 12%; width: 4px; background-color: var(--lh-accent-orange); border-radius: 0 4px 4px 0; }
+    .definition-container { background-color: var(--lh-sub-card-bg); border-radius: var(--lh-radius-md); padding: 1.25rem 1.5rem; position: relative; overflow: hidden; font-size: 0.95rem; color: var(--lh-text-primary); margin-bottom: 1.25rem; border-left: 4px solid var(--lh-accent-orange); }
     .definition-container .pos-label { font-style: italic; font-weight: 600; color: var(--lh-primary-blue); margin-right: 0.35rem; }
 
     .pos-matrix-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
-    .pos-matrix-col { background-color: var(--lh-sub-card-bg); border-radius: var(--lh-radius-md); padding: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem; min-height: 95px; border: 1px solid transparent; }
-    .pos-matrix-col-header { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding-bottom: 0.35rem; border-bottom: 1px solid rgba(0, 0, 0, 0.05); }
+    .pos-matrix-col { background-color: var(--lh-sub-card-bg); border-radius: var(--lh-radius-md); padding: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem; min-height: 95px; border: 1px solid var(--lh-border); }
+    .pos-matrix-col-header { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding-bottom: 0.35rem; border-bottom: 1px solid var(--lh-border); }
 
-    .pos-col-noun { border-color: #dbeafe; }
-    .pos-col-noun .pos-matrix-col-header { color: #1d4ed8; }
-    .pos-col-noun .matrix-pill { background: #eff6ff; color: #1e40af; }
+    .pos-col-noun .pos-matrix-col-header { color: #1d64ec; }
+    .pos-col-noun .matrix-pill { background: rgba(29, 100, 236, 0.1); color: var(--lh-primary-blue); }
 
-    .pos-col-verb { border-color: #fef3c7; }
     .pos-col-verb .pos-matrix-col-header { color: #b45309; }
-    .pos-col-verb .matrix-pill { background: #fffbeb; color: #92400e; }
+    .pos-col-verb .matrix-pill { background: rgba(245, 158, 11, 0.1); color: var(--lh-accent-orange); }
 
-    .pos-col-adj { border-color: #e0e7ff; }
-    .pos-col-adj .pos-matrix-col-header { color: #4338ca; }
-    .pos-col-adj .matrix-pill { background: #eef2ff; color: #3730a3; }
+    .pos-col-adj .pos-matrix-col-header { color: #6366f1; }
+    .pos-col-adj .matrix-pill { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
 
-    .pos-col-adv { border-color: #f3e8ff; }
-    .pos-col-adv .pos-matrix-col-header { color: #7e22ce; }
-    .pos-col-adv .matrix-pill { background: #faf5ff; color: #6b21a8; }
+    .pos-col-adv .pos-matrix-col-header { color: #a855f7; }
+    .pos-col-adv .matrix-pill { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
 
     .pos-matrix-items { display: flex; flex-direction: column; gap: 0.35rem; align-items: flex-start; }
-    .matrix-pill { border-radius: var(--lh-radius-sm); padding: 0.3rem 0.6rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid rgba(0, 0, 0, 0.04); transition: transform 0.1s ease; }
+    .matrix-pill { border-radius: var(--lh-radius-sm); padding: 0.3rem 0.6rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid transparent; }
     .matrix-pill:hover { transform: translateY(-1px); }
     .matrix-empty-cell { color: var(--lh-text-muted); font-size: 0.85rem; margin-top: 0.4rem; align-self: center; }
 
@@ -153,6 +167,9 @@
     <header>
       <button class="btn-secondary" onclick="toggleSidebar()">☰ Workspace</button>
       <div style="font-weight: 800; font-size: 1.1rem; color: var(--lh-primary-blue);">LinguistHub</div>
+      <div class="header-actions">
+        <button id="themeToggle" class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Day/Night">🌓</button>
+      </div>
     </header>
 
     <div class="search-wrapper">
@@ -172,7 +189,7 @@
       <button class="btn search-btn" onclick="handleSearch()">Search</button>
     </div>
 
-    <div id="loader">Retrieving morphological matrix...</div>
+    <div id="loader">Resolving lexical matrices & dictionaries...</div>
 
     <section id="results" class="lexical-card">
       <div class="word-header">
@@ -222,16 +239,38 @@
         Syll: <span id="r-syll" style="color: var(--lh-primary-blue); font-weight: 700;"></span>
       </div>
 
-      <div class="section-meta-title">Synonyms</div>
+      <div class="section-meta-title">Synonyms (Max 5)</div>
       <div class="chips-flex" id="r-synonyms"></div>
 
-      <div class="section-meta-title">Antonyms</div>
+      <div class="section-meta-title">Antonyms (Max 5)</div>
       <div class="chips-flex" id="r-antonyms"></div>
     </section>
   </main>
 
   <script>
-    const GOOGLE_API_KEY = "YOUR_ACTUAL_KEY_HERE";
+    // ==========================================
+    // API KEYS CONFIGURATION
+    // ==========================================
+    const GOOGLE_API_KEY = "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc";
+    const MW_DICT_KEY = "7c14969b-2038-4024-ade3-ad9680fd94ff";
+    const MW_THES_KEY = "9e966fec-f0d8-497c-97f3-dd9938d108a0";
+
+    // Theme Lifecycle
+    function initTheme() {
+      const savedTheme = localStorage.getItem('lh-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      updateThemeIcon(savedTheme);
+    }
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', current);
+      localStorage.setItem('lh-theme', current);
+      updateThemeIcon(current);
+    }
+    function updateThemeIcon(theme) {
+      document.getElementById('themeToggle').innerText = theme === 'dark' ? '☀️' : '🌙';
+    }
+    initTheme();
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -295,6 +334,42 @@
       firebase.auth().signInWithPopup(provider).catch(e => alert(e.message));
     }
 
+    // Algorithmic Morphological Derivation
+    function deriveMorphology(word, baseForms) {
+      const result = {
+        noun: new Set(baseForms.noun || []),
+        verb: new Set(baseForms.verb || []),
+        adjective: new Set(baseForms.adjective || []),
+        adverb: new Set(baseForms.adverb || [])
+      };
+
+      if (word.endsWith('y')) {
+        const stem = word.slice(0, -1);
+        result.adjective.add(word);
+        result.noun.add(stem + 'iness');
+        result.adverb.add(stem + 'ily');
+      } else if (word.endsWith('ness')) {
+        const stem = word.slice(0, -4);
+        result.noun.add(word);
+        result.adjective.add(stem.endsWith('i') ? stem.slice(0, -1) + 'y' : stem);
+      } else if (word.endsWith('ate')) {
+        result.verb.add(word);
+        result.noun.add(word + 'ment');
+        result.noun.add(word.slice(0, -1) + 'ion');
+        result.adjective.add(word.slice(0, -1) + 'ive');
+      } else if (word.endsWith('tion') || word.endsWith('sion')) {
+        result.noun.add(word);
+        result.verb.add(word.replace(/(?:tion|sion)$/, 'te'));
+      }
+
+      return {
+        noun: Array.from(result.noun),
+        verb: Array.from(result.verb),
+        adjective: Array.from(result.adjective),
+        adverb: Array.from(result.adverb)
+      };
+    }
+
     async function handleSearch(searchWord) {
       const input = document.getElementById('wordInput');
       const word = (searchWord || input.value).trim().toLowerCase();
@@ -309,40 +384,32 @@
       try {
         const firstLetter = word.charAt(0);
         const res = await fetch(`./by-letter/structured_${firstLetter}.json`);
-        if (!res.ok) throw new Error(`Partition [${firstLetter}] unavailable.`);
-
-        const partition = await res.json();
-        const entry = partition[word];
-
-        if (!entry) {
-          alert(`"${word}" not found.`);
-          return;
+        let entry = null;
+        if (res.ok) {
+          const partition = await res.json();
+          entry = partition[word] || null;
         }
 
-        const forms = entry.forms || {};
+        const resolvedForms = deriveMorphology(word, entry?.forms || {});
+        
         let detectedPos = "WORD";
-        for (const [pos, words] of Object.entries(forms)) {
-          if (Array.isArray(words) && words.includes(word)) {
+        for (const [pos, words] of Object.entries(resolvedForms)) {
+          if (words.includes(word)) {
             detectedPos = pos;
             break;
           }
         }
-        if (detectedPos === "WORD") {
-          const validKeys = Object.keys(forms).filter(k => forms[k]?.length);
-          if (validKeys.length) detectedPos = validKeys[0];
-        }
 
         document.getElementById('r-word').innerText = word;
         document.getElementById('r-pos').innerText = detectedPos.toUpperCase();
-        document.getElementById('r-syll').innerText = entry.syllables ? entry.syllables.join('·') : word;
-
+        document.getElementById('r-syll').innerText = entry?.syllables ? entry.syllables.join('·') : word;
         document.getElementById('r-def-pos').innerText = detectedPos.toLowerCase();
-        document.getElementById('r-def-text').innerText = entry.definition || `Morphological lexical root and derivative grouping for '${word}'.`;
 
+        // Populate 4-Column Morphological Grid
         const posMap = { noun: 'morph-noun', verb: 'morph-verb', adjective: 'morph-adj', adverb: 'morph-adv' };
         Object.entries(posMap).forEach(([key, id]) => {
           const col = document.getElementById(id);
-          const items = forms[key] || [];
+          const items = resolvedForms[key] || [];
           if (items.length > 0) {
             col.innerHTML = items.map(w => `<span class="matrix-pill" onclick="handleSearch('${w}')">${w}</span>`).join('');
           } else {
@@ -350,16 +417,12 @@
           }
         });
 
-        const renderChips = (list, id, cls) => {
-          const el = document.getElementById(id);
-          el.innerHTML = (list && list.length) 
-            ? list.map(w => `<span class="chip ${cls}" onclick="handleSearch('${w}')">${w}</span>`).join('') 
-            : `<span style="color: var(--lh-text-muted); font-size: 0.85rem;">None</span>`;
-        };
-        renderChips(entry.synonyms, 'r-synonyms', 'synonym');
-        renderChips(entry.antonyms, 'r-antonyms', 'antonym');
-
-        fetchArabicTranslation(word);
+        // Resolve Definition, Synonyms & Antonyms (MW API with Fallbacks)
+        await Promise.all([
+          resolveDefinition(word, detectedPos),
+          resolveThesaurus(word, entry),
+          fetchArabicTranslation(word)
+        ]);
 
         document.getElementById('results').style.display = 'block';
         updateStarUI();
@@ -374,26 +437,97 @@
       }
     }
 
+    async function resolveDefinition(word, fallbackPos) {
+      const defContainer = document.getElementById('r-def-text');
+      defContainer.innerText = "Loading definition...";
+
+      if (MW_DICT_KEY && MW_DICT_KEY !== "YOUR_MW_DICTIONARY_KEY_HERE") {
+        try {
+          const res = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${encodeURIComponent(word)}?key=${MW_DICT_KEY}`);
+          const data = await res.json();
+          if (Array.isArray(data) && data[0]?.shortdef?.length) {
+            defContainer.innerText = data[0].shortdef[0];
+            if (data[0].fl) document.getElementById('r-def-pos').innerText = data[0].fl.toLowerCase();
+            return;
+          }
+        } catch (_) {}
+      }
+
+      // Open Keyless Fallback
+      try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+        const data = await res.json();
+        if (Array.isArray(data) && data[0]?.meanings?.[0]?.definitions?.[0]?.definition) {
+          defContainer.innerText = data[0].meanings[0].definitions[0].definition;
+          if (data[0].meanings[0].partOfSpeech) {
+            document.getElementById('r-def-pos').innerText = data[0].meanings[0].partOfSpeech.toLowerCase();
+          }
+          return;
+        }
+      } catch (_) {}
+
+      defContainer.innerText = `Standard lexical term '${word}'.`;
+    }
+
+    async function resolveThesaurus(word, localEntry) {
+      let syns = localEntry?.synonyms || [];
+      let ants = localEntry?.antonyms || [];
+
+      if (MW_THES_KEY && MW_THES_KEY !== "YOUR_MW_THESAURUS_KEY_HERE") {
+        try {
+          const res = await fetch(`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${encodeURIComponent(word)}?key=${MW_THES_KEY}`);
+          const data = await res.json();
+          if (Array.isArray(data) && data[0]?.meta) {
+            if (data[0].meta.syns?.length) syns = [...new Set([...syns, ...data[0].meta.syns.flat()])];
+            if (data[0].meta.ants?.length) ants = [...new Set([...ants, ...data[0].meta.ants.flat()])];
+          }
+        } catch (_) {}
+      }
+
+      renderChips(syns.slice(0, 5), 'r-synonyms', 'synonym');
+      renderChips(ants.slice(0, 5), 'r-antonyms', 'antonym');
+    }
+
+    function renderChips(list, id, cls) {
+      const el = document.getElementById(id);
+      el.innerHTML = (list && list.length) 
+        ? list.map(w => `<span class="chip ${cls}" onclick="handleSearch('${w}')">${w}</span>`).join('') 
+        : `<span style="color: var(--lh-text-muted); font-size: 0.85rem;">None</span>`;
+    }
+
     async function fetchArabicTranslation(word) {
       const arContainer = document.getElementById('r-ar');
       arContainer.innerText = "...";
-      if (!navigator.onLine || !GOOGLE_API_KEY || GOOGLE_API_KEY === "YOUR_ACTUAL_KEY_HERE") {
-        arContainer.innerText = "—";
-        return;
+
+      // 1. Google Cloud v2 Translation API
+      if (GOOGLE_API_KEY && GOOGLE_API_KEY !== "YOUR_GOOGLE_KEY_HERE") {
+        try {
+          const res = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_API_KEY}&q=${encodeURIComponent(word)}&target=ar&format=text`);
+          const json = await res.json();
+          if (json.data?.translations?.[0]?.translatedText) {
+            arContainer.innerText = json.data.translations[0].translatedText;
+            return;
+          }
+        } catch (_) {}
       }
+
+      // 2. Resilient Open Proxy Fallback
       try {
-        const res = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_API_KEY}&q=${encodeURIComponent(word)}&target=ar&format=text`);
-        const json = await res.json();
-        arContainer.innerText = json.data?.translations?.[0]?.translatedText || "—";
-      } catch (e) {
-        arContainer.innerText = "—";
-      }
+        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ar&dt=t&q=${encodeURIComponent(word)}`);
+        const data = await res.json();
+        if (data?.[0]?.[0]?.[0]) {
+          arContainer.innerText = data[0][0][0];
+          return;
+        }
+      } catch (_) {}
+
+      arContainer.innerText = "—";
     }
 
     let audioStream = null;
     async function playAudio() {
       if (!lastWord) return;
-      if (navigator.onLine && GOOGLE_API_KEY && GOOGLE_API_KEY !== "YOUR_ACTUAL_KEY_HERE") {
+      if (GOOGLE_API_KEY && GOOGLE_API_KEY !== "YOUR_GOOGLE_KEY_HERE") {
         try {
           const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`, {
             method: "POST",
