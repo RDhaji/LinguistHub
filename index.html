@@ -5,95 +5,141 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>LinguistHub Master</title>
 
+  <!-- Fonts: Plus Jakarta Sans & Marhey -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Marhey:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <!-- PWA & Mobile Meta -->
   <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#2563eb">
+  <meta name="theme-color" content="#1d64ec">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="./icon.png">
 
-  <!-- External Infrastructure: Firebase 8.x -->
+  <!-- Firebase 8.x Infrastructure -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <style>
     :root {
-      --bg: #0f172a;
-      --surface: #1e293b;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --accent: #2563eb;
-      --accent-hover: #1d4ed8;
-      --border: #334155;
-      --star: #e2e8f0;
-      --star-active: #eab308;
+      --lh-bg: #edf2f7;
+      --lh-card-bg: #ffffff;
+      --lh-sub-card-bg: #f0f4f8;
+      --lh-primary-blue: #1d64ec;
+      --lh-primary-hover: #1551c6;
+      --lh-accent-orange: #f59e0b;
+      --lh-text-primary: #0f172a;
+      --lh-text-muted: #64748b;
+      --lh-text-white: #ffffff;
+      --lh-border: #e2e8f0;
+      --lh-synonym-bg: #ebf5ff;
+      --lh-synonym-text: #1d64ec;
+      --lh-antonym-bg: #fef3c7;
+      --lh-antonym-text: #b45309;
+      --lh-radius-sm: 8px;
+      --lh-radius-md: 14px;
+      --lh-radius-lg: 20px;
+      --lh-radius-xl: 28px;
     }
 
-    [data-theme="light"] {
-      --bg: #f8fafc;
-      --surface: #ffffff;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --accent: #2563eb;
-      --accent-hover: #1d4ed8;
-      --border: #e2e8f0;
-      --star: #94a3b8;
-      --star-active: #eab308;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    body { background-color: var(--lh-bg); color: var(--lh-text-primary); display: flex; height: 100vh; overflow: hidden; }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
-
-    #sidebar { width: 320px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: transform 0.2s ease; z-index: 20; }
+    #sidebar { width: 320px; background: var(--lh-card-bg); border-right: 1px solid var(--lh-border); display: flex; flex-direction: column; transition: transform 0.2s ease; z-index: 20; }
     #sidebar.collapsed { transform: translateX(-100%); position: absolute; height: 100%; }
-    #main-content { flex: 1; display: flex; flex-direction: column; position: relative; overflow-y: auto; }
+    #main-content { flex: 1; display: flex; flex-direction: column; position: relative; overflow-y: auto; padding-bottom: 3rem; }
 
-    header { padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface); }
-    .btn { background: var(--accent); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 6px; cursor: pointer; font-weight: 500; }
-    .btn:hover { background: var(--accent-hover); }
-    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--lh-border); display: flex; justify-content: space-between; align-items: center; background: var(--lh-card-bg); }
+    .btn { background: var(--lh-primary-blue); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: var(--lh-radius-sm); cursor: pointer; font-weight: 600; }
+    .btn:hover { background: var(--lh-primary-hover); }
+    .btn-secondary { background: transparent; border: 1px solid var(--lh-border); color: var(--lh-text-primary); padding: 0.4rem 0.75rem; border-radius: var(--lh-radius-sm); cursor: pointer; font-weight: 600; }
 
-    .search-container { padding: 2rem 1rem 1rem 1rem; max-width: 680px; width: 100%; margin: 0 auto; }
+    .search-wrapper { max-width: 820px; width: 100%; margin: 2rem auto 1.5rem; padding: 0 1rem; display: flex; gap: 0.75rem; }
+    .input-box { position: relative; flex: 1; display: flex; align-items: center; }
+    #wordInput { width: 100%; height: 52px; padding: 0 2.8rem 0 1.25rem; border-radius: var(--lh-radius-md); border: 1px solid var(--lh-border); background: var(--lh-card-bg); font-size: 1.05rem; font-weight: 500; color: var(--lh-text-primary); outline: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    #wordInput:focus { border-color: var(--lh-primary-blue); }
+    #clearBtn { position: absolute; right: 1rem; background: none; border: none; color: var(--lh-text-muted); cursor: pointer; font-size: 1.1rem; display: none; }
+    .search-btn { height: 52px; padding: 0 1.75rem; border-radius: var(--lh-radius-md); font-weight: 700; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
 
-    .input-wrapper { position: relative; display: flex; align-items: center; }
-    #wordInput { width: 100%; padding: 0.85rem 2.8rem 0.85rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 1.1rem; outline: none; }
-    #wordInput:focus { border-color: var(--accent); }
-    #clearBtn { position: absolute; right: 0.8rem; background: none; border: none; color: var(--text-muted); cursor: pointer; display: none; font-size: 1.1rem; }
+    .lexical-card { background: var(--lh-card-bg); border-radius: var(--lh-radius-xl); padding: 2.5rem; box-shadow: 0 4px 25px -4px rgba(0, 0, 0, 0.04); max-width: 820px; width: calc(100% - 2rem); margin: 0 auto; display: none; }
 
-    #results { max-width: 680px; width: 100%; margin: 0 auto; padding: 1rem; display: none; }
-    .word-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
-    .word-title { font-size: 2rem; font-weight: 700; }
-    .star-icon { cursor: pointer; font-size: 1.8rem; color: var(--star); transition: color 0.15s; }
-    .star-icon.active { color: var(--star-active); }
-    .meta-row { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; font-size: 0.95rem; color: var(--text-muted); }
-    .definition-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; line-height: 1.6; }
+    .word-header { display: flex; justify-content: space-between; align-items: center; }
+    .word-heading-group { display: flex; align-items: center; gap: 0.75rem; }
+    .word-title { font-size: 2.25rem; font-weight: 800; text-transform: capitalize; color: var(--lh-text-primary); }
+    .audio-trigger { background: transparent; border: none; cursor: pointer; color: var(--lh-primary-blue); display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 50%; transition: opacity 0.15s; }
+    .audio-trigger:hover { opacity: 0.8; }
+    .star-icon { cursor: pointer; font-size: 1.8rem; color: #cbd5e1; transition: color 0.15s; }
+    .star-icon.active { color: #eab308; }
 
-    .tab-bar { display: flex; border-bottom: 1px solid var(--border); }
-    .tab { flex: 1; padding: 0.75rem; text-align: center; cursor: pointer; background: transparent; color: var(--text-muted); border: none; font-weight: 600; }
-    .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+    .pos-tag-group { margin-top: 0.25rem; margin-bottom: 1.25rem; }
+    .pos-tag-label { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lh-primary-blue); display: inline-block; position: relative; padding-bottom: 4px; }
+    .pos-tag-label::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background-color: var(--lh-accent-orange); border-radius: 2px; }
+
+    .arabic-badge-container { display: flex; justify-content: center; margin: 0.5rem 0 1.5rem; min-height: 54px; }
+    .arabic-badge { background-color: var(--lh-primary-blue); color: var(--lh-text-white); font-family: 'Marhey', system-ui, sans-serif; font-size: 1.6rem; font-weight: 700; padding: 0.5rem 2.2rem; border-radius: var(--lh-radius-md); direction: rtl; text-align: center; }
+
+    .definition-container { background-color: var(--lh-sub-card-bg); border-radius: var(--lh-radius-md); padding: 1.25rem 1.5rem; position: relative; overflow: hidden; font-size: 0.95rem; color: var(--lh-text-primary); margin-bottom: 1.25rem; }
+    .definition-container::before { content: ''; position: absolute; left: 0; top: 12%; bottom: 12%; width: 4px; background-color: var(--lh-accent-orange); border-radius: 0 4px 4px 0; }
+    .definition-container .pos-label { font-style: italic; font-weight: 600; color: var(--lh-primary-blue); margin-right: 0.35rem; }
+
+    .pos-matrix-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .pos-matrix-col { background-color: var(--lh-sub-card-bg); border-radius: var(--lh-radius-md); padding: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem; min-height: 95px; border: 1px solid transparent; }
+    .pos-matrix-col-header { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding-bottom: 0.35rem; border-bottom: 1px solid rgba(0, 0, 0, 0.05); }
+
+    .pos-col-noun { border-color: #dbeafe; }
+    .pos-col-noun .pos-matrix-col-header { color: #1d4ed8; }
+    .pos-col-noun .matrix-pill { background: #eff6ff; color: #1e40af; }
+
+    .pos-col-verb { border-color: #fef3c7; }
+    .pos-col-verb .pos-matrix-col-header { color: #b45309; }
+    .pos-col-verb .matrix-pill { background: #fffbeb; color: #92400e; }
+
+    .pos-col-adj { border-color: #e0e7ff; }
+    .pos-col-adj .pos-matrix-col-header { color: #4338ca; }
+    .pos-col-adj .matrix-pill { background: #eef2ff; color: #3730a3; }
+
+    .pos-col-adv { border-color: #f3e8ff; }
+    .pos-col-adv .pos-matrix-col-header { color: #7e22ce; }
+    .pos-col-adv .matrix-pill { background: #faf5ff; color: #6b21a8; }
+
+    .pos-matrix-items { display: flex; flex-direction: column; gap: 0.35rem; align-items: flex-start; }
+    .matrix-pill { border-radius: var(--lh-radius-sm); padding: 0.3rem 0.6rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid rgba(0, 0, 0, 0.04); transition: transform 0.1s ease; }
+    .matrix-pill:hover { transform: translateY(-1px); }
+    .matrix-empty-cell { color: var(--lh-text-muted); font-size: 0.85rem; margin-top: 0.4rem; align-self: center; }
+
+    .section-meta-title { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--lh-text-muted); margin-bottom: 0.4rem; }
+    .chips-flex { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.25rem; }
+    .chip { padding: 0.35rem 0.75rem; border-radius: var(--lh-radius-sm); font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+    .chip.synonym { background-color: var(--lh-synonym-bg); color: var(--lh-synonym-text); }
+    .chip.antonym { background-color: var(--lh-antonym-bg); color: var(--lh-antonym-text); }
+
+    .tab-bar { display: flex; border-bottom: 1px solid var(--lh-border); }
+    .tab { flex: 1; padding: 0.75rem; text-align: center; cursor: pointer; background: transparent; color: var(--lh-text-muted); border: none; font-weight: 600; }
+    .tab.active { color: var(--lh-primary-blue); border-bottom: 2px solid var(--lh-primary-blue); }
     #list-items { flex: 1; overflow-y: auto; padding: 0.5rem; }
-    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.75rem; border-radius: 6px; cursor: pointer; }
-    .list-item:hover { background: var(--border); }
+    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.75rem; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.9rem; }
+    .list-item:hover { background: var(--lh-sub-card-bg); }
 
-    #loader { display: none; text-align: center; padding: 2rem; color: var(--text-muted); }
-    #login-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); display: none; justify-content: center; align-items: center; z-index: 100; }
-    .modal { background: var(--surface); padding: 2rem; border-radius: 12px; text-align: center; border: 1px solid var(--border); max-width: 380px; width: 90%; }
+    #loader { display: none; text-align: center; padding: 2rem; color: var(--lh-text-muted); font-weight: 600; }
+    #login-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); display: none; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(4px); }
+    .modal { background: var(--lh-card-bg); padding: 2.5rem; border-radius: var(--lh-radius-lg); text-align: center; border: 1px solid var(--lh-border); max-width: 400px; width: 90%; }
   </style>
 </head>
-<body data-theme="dark">
+<body>
 
   <div id="login-overlay">
     <div class="modal">
-      <h2 style="margin-bottom: 1rem;">LinguistHub Access</h2>
-      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Authenticate to sync personal history and lexical bookmarks.</p>
-      <button class="btn" style="width: 100%;" onclick="login()">Continue with Google</button>
+      <h2 style="margin-bottom: 0.5rem; font-weight: 800;">LinguistHub</h2>
+      <p style="color: var(--lh-text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">Sign in to synchronize your history and bookmarked lexicons across devices.</p>
+      <button class="btn" style="width: 100%; height: 48px;" onclick="login()">Continue with Google</button>
     </div>
   </div>
 
   <aside id="sidebar">
-    <div style="padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-      <strong>Lexical Workspace</strong>
+    <div style="padding: 1.25rem; border-bottom: 1px solid var(--lh-border); display: flex; justify-content: space-between; align-items: center;">
+      <strong style="font-weight: 800; font-size: 1.05rem;">Workspace</strong>
       <button class="btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="toggleSidebar()">✕</button>
     </div>
     <div class="tab-bar">
@@ -101,60 +147,95 @@
       <button id="tab-bookmarks" class="tab" onclick="setTab('bookmarks')">Pinned (<span id="pinned-count">0</span>)</button>
     </div>
     <div id="list-items"></div>
-    <div style="padding: 0.75rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem;">
-      <button class="btn-secondary" style="flex:1; font-size: 0.8rem;" onclick="exportData()">Export</button>
-      <button class="btn-secondary" style="flex:1; font-size: 0.8rem; color: #ef4444;" onclick="clearCloud()">Purge</button>
-    </div>
   </aside>
 
   <main id="main-content">
     <header>
-      <div style="display: flex; gap: 0.5rem;">
-        <button class="btn-secondary" onclick="toggleSidebar()">☰</button>
-        <button class="btn-secondary" onclick="toggleTheme()">🌓</button>
-      </div>
-      <div style="font-weight: 600;">LinguistHub v2</div>
+      <button class="btn-secondary" onclick="toggleSidebar()">☰ Workspace</button>
+      <div style="font-weight: 800; font-size: 1.1rem; color: var(--lh-primary-blue);">LinguistHub</div>
     </header>
 
-    <div class="search-container">
-      <div class="input-wrapper">
+    <div class="search-wrapper">
+      <div class="input-box">
         <input 
-
-            type="text" 
-            id="wordInput" 
-            placeholder="Lookup root, form, or affix..." 
-            autocomplete="off" 
-            autocapitalize="off" 
-            spellcheck="false"
-            oninput="toggleClearBtn(); prefetchPartition(event)" 
-            onkeydown="if(event.key === 'Enter') handleSearch()"
+          type="text" 
+          id="wordInput" 
+          placeholder="Lookup root, form, or affix..." 
+          autocomplete="off" 
+          autocapitalize="off" 
+          spellcheck="false"
+          oninput="toggleClearBtn(); prefetchPartition(event)" 
+          onkeydown="if(event.key === 'Enter') handleSearch()"
         >
         <button id="clearBtn" onclick="clearSearchInput()">✕</button>
       </div>
+      <button class="btn search-btn" onclick="handleSearch()">Search</button>
     </div>
 
-    <div id="loader">Fetching partition chunk...</div>
+    <div id="loader">Retrieving morphological matrix...</div>
 
-    <section id="results">
+    <section id="results" class="lexical-card">
       <div class="word-header">
-        <h1 id="r-word" class="word-title"></h1>
+        <div class="word-heading-group">
+          <h1 id="r-word" class="word-title"></h1>
+          <button class="audio-trigger" id="audioBtn" onclick="playAudio()" title="Pronounce">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zm-2.5 0L6.71 8H3v8h3.71L11.5 20.77V3.23z"/></svg>
+          </button>
+        </div>
         <span id="mainStar" class="star-icon" onclick="toggleBookmark()">★</span>
       </div>
-      <div class="meta-row">
-        <span><strong>POS:</strong> <span id="r-pos"></span></span>
-        <span>•</span>
-        <span><strong>Syllables:</strong> <span id="r-syll"></span></span>
+
+      <div class="pos-tag-group">
+        <span class="pos-tag-label" id="r-pos"></span>
       </div>
-      <div id="r-def" class="definition-box"></div>
+
+      <div class="arabic-badge-container">
+        <div id="r-ar" class="arabic-badge">...</div>
+      </div>
+
+      <div class="definition-container">
+        <span class="pos-label" id="r-def-pos"></span>
+        <span id="r-def-text"></span>
+      </div>
+
+      <div class="pos-matrix-grid">
+        <div class="pos-matrix-col pos-col-noun">
+          <div class="pos-matrix-col-header">Noun</div>
+          <div class="pos-matrix-items" id="morph-noun"></div>
+        </div>
+        <div class="pos-matrix-col pos-col-verb">
+          <div class="pos-matrix-col-header">Verb</div>
+          <div class="pos-matrix-items" id="morph-verb"></div>
+        </div>
+        <div class="pos-matrix-col pos-col-adj">
+          <div class="pos-matrix-col-header">Adjective</div>
+          <div class="pos-matrix-items" id="morph-adj"></div>
+        </div>
+        <div class="pos-matrix-col pos-col-adv">
+          <div class="pos-matrix-col-header">Adverb</div>
+          <div class="pos-matrix-items" id="morph-adv"></div>
+        </div>
+      </div>
+
+      <div class="section-meta-title">Archive</div>
+      <div style="font-size: 0.95rem; font-weight: 700; margin-bottom: 1.25rem;">
+        Syll: <span id="r-syll" style="color: var(--lh-primary-blue); font-weight: 700;"></span>
+      </div>
+
+      <div class="section-meta-title">Synonyms</div>
+      <div class="chips-flex" id="r-synonyms"></div>
+
+      <div class="section-meta-title">Antonyms</div>
+      <div class="chips-flex" id="r-antonyms"></div>
     </section>
   </main>
 
   <script>
+    const GOOGLE_API_KEY = "YOUR_ACTUAL_KEY_HERE";
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js', { scope: './' })
-          .then(reg => console.log('[SW] Registered. Scope:', reg.scope))
-          .catch(err => console.error('[SW] Registration failed:', err));
+        navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(console.error);
       });
     }
 
@@ -170,21 +251,24 @@
     let history = [], bookmarks = [], lastWord = "", currentTab = 'history', userPath = "";
 
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
-    function toggleTheme() { 
-      const current = document.body.getAttribute('data-theme'); 
-      document.body.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark'); 
-    }
-
     function toggleClearBtn() {
       const input = document.getElementById('wordInput');
       document.getElementById('clearBtn').style.display = input.value.length > 0 ? 'block' : 'none';
     }
-
     function clearSearchInput() {
       const input = document.getElementById('wordInput');
       input.value = "";
       toggleClearBtn();
       input.focus();
+    }
+
+    const prefetchedLetters = new Set();
+    function prefetchPartition(event) {
+      const char = event.target.value.trim().charAt(0).toLowerCase();
+      if (char && /^[a-z]$/.test(char) && !prefetchedLetters.has(char)) {
+        prefetchedLetters.add(char);
+        fetch(`./by-letter/structured_${char}.json`, { priority: 'low' }).catch(() => prefetchedLetters.delete(char));
+      }
     }
 
     firebase.auth().onAuthStateChanged(user => {
@@ -208,10 +292,7 @@
 
     function login() {
       const provider = new firebase.auth.GoogleAuthProvider();
-      firebase.auth().signInWithPopup(provider).catch(error => {
-        console.error(error);
-        alert("Authentication failed: " + error.message);
-      });
+      firebase.auth().signInWithPopup(provider).catch(e => alert(e.message));
     }
 
     async function handleSearch(searchWord) {
@@ -224,46 +305,118 @@
       document.getElementById('loader').style.display = 'block';
       document.getElementById('results').style.display = 'none';
       toggleClearBtn();
-// Speculative Partition Prefetcher (0ms cache hits)
-const prefetchedLetters = new Set();
-function prefetchPartition(event) {
-  const char = event.target.value.trim().charAt(0).toLowerCase();
-  if (char && /^[a-z]$/.test(char) && !prefetchedLetters.has(char)) {
-    prefetchedLetters.add(char);
-    fetch(`./by-letter/structured_${char}.json`, { priority: 'low' })
-      .catch(() => prefetchedLetters.delete(char));
-  }
-}
+
       try {
         const firstLetter = word.charAt(0);
-        const response = await fetch(`./by-letter/structured_${firstLetter}.json`);
-        
-        if (!response.ok) throw new Error(`Partition chunk [${firstLetter}] unreadable.`);
+        const res = await fetch(`./by-letter/structured_${firstLetter}.json`);
+        if (!res.ok) throw new Error(`Partition [${firstLetter}] unavailable.`);
 
-        const partition = await response.json();
+        const partition = await res.json();
         const entry = partition[word];
 
         if (!entry) {
-          alert(`"${word}" not found in local index.`);
+          alert(`"${word}" not found.`);
           return;
         }
 
-        document.getElementById('r-word').innerText = word;
-        document.getElementById('r-pos').innerText = entry.pos || "N/A";
-        document.getElementById('r-syll').innerText = entry.syllables ? entry.syllables.join('·') : word;
-        document.getElementById('r-def').innerHTML = entry.definition || "No definition available.";
-        document.getElementById('results').style.display = 'block';
+        const forms = entry.forms || {};
+        let detectedPos = "WORD";
+        for (const [pos, words] of Object.entries(forms)) {
+          if (Array.isArray(words) && words.includes(word)) {
+            detectedPos = pos;
+            break;
+          }
+        }
+        if (detectedPos === "WORD") {
+          const validKeys = Object.keys(forms).filter(k => forms[k]?.length);
+          if (validKeys.length) detectedPos = validKeys[0];
+        }
 
+        document.getElementById('r-word').innerText = word;
+        document.getElementById('r-pos').innerText = detectedPos.toUpperCase();
+        document.getElementById('r-syll').innerText = entry.syllables ? entry.syllables.join('·') : word;
+
+        document.getElementById('r-def-pos').innerText = detectedPos.toLowerCase();
+        document.getElementById('r-def-text').innerText = entry.definition || `Morphological lexical root and derivative grouping for '${word}'.`;
+
+        const posMap = { noun: 'morph-noun', verb: 'morph-verb', adjective: 'morph-adj', adverb: 'morph-adv' };
+        Object.entries(posMap).forEach(([key, id]) => {
+          const col = document.getElementById(id);
+          const items = forms[key] || [];
+          if (items.length > 0) {
+            col.innerHTML = items.map(w => `<span class="matrix-pill" onclick="handleSearch('${w}')">${w}</span>`).join('');
+          } else {
+            col.innerHTML = `<span class="matrix-empty-cell">-</span>`;
+          }
+        });
+
+        const renderChips = (list, id, cls) => {
+          const el = document.getElementById(id);
+          el.innerHTML = (list && list.length) 
+            ? list.map(w => `<span class="chip ${cls}" onclick="handleSearch('${w}')">${w}</span>`).join('') 
+            : `<span style="color: var(--lh-text-muted); font-size: 0.85rem;">None</span>`;
+        };
+        renderChips(entry.synonyms, 'r-synonyms', 'synonym');
+        renderChips(entry.antonyms, 'r-antonyms', 'antonym');
+
+        fetchArabicTranslation(word);
+
+        document.getElementById('results').style.display = 'block';
         updateStarUI();
 
         if (userPath) {
           db.ref(userPath + '/history/' + word).set({ timestamp: Date.now() });
         }
       } catch (err) {
-        console.error("[Search Engine Failure]:", err);
+        console.error(err);
       } finally {
         document.getElementById('loader').style.display = 'none';
       }
+    }
+
+    async function fetchArabicTranslation(word) {
+      const arContainer = document.getElementById('r-ar');
+      arContainer.innerText = "...";
+      if (!navigator.onLine || !GOOGLE_API_KEY || GOOGLE_API_KEY === "YOUR_ACTUAL_KEY_HERE") {
+        arContainer.innerText = "—";
+        return;
+      }
+      try {
+        const res = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_API_KEY}&q=${encodeURIComponent(word)}&target=ar&format=text`);
+        const json = await res.json();
+        arContainer.innerText = json.data?.translations?.[0]?.translatedText || "—";
+      } catch (e) {
+        arContainer.innerText = "—";
+      }
+    }
+
+    let audioStream = null;
+    async function playAudio() {
+      if (!lastWord) return;
+      if (navigator.onLine && GOOGLE_API_KEY && GOOGLE_API_KEY !== "YOUR_ACTUAL_KEY_HERE") {
+        try {
+          const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              input: { text: lastWord },
+              voice: { languageCode: "en-US", name: "en-US-Neural2-F" },
+              audioConfig: { audioEncoding: "MP3" }
+            })
+          });
+          const data = await res.json();
+          if (data.audioContent) {
+            if (audioStream) audioStream.pause();
+            audioStream = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+            await audioStream.play();
+            return;
+          }
+        } catch (_) {}
+      }
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(lastWord);
+      utter.lang = 'en-US';
+      window.speechSynthesis.speak(utter);
     }
 
     function toggleBookmark() { 
@@ -276,25 +429,22 @@ function prefetchPartition(event) {
     }
 
     function updateStarUI() { 
-      const star = document.getElementById('mainStar'); 
-      star.classList.toggle('active', bookmarks.includes(lastWord));
+      document.getElementById('mainStar').classList.toggle('active', bookmarks.includes(lastWord));
     }
 
     function updateSidebar() {
       const container = document.getElementById('list-items'); 
       container.innerHTML = "";
       const activeList = currentTab === 'history' ? history : bookmarks;
-      
       activeList.forEach(itemWord => {
         const row = document.createElement('div'); 
         row.className = 'list-item';
         row.innerHTML = `
           <span style="flex:1" onclick="handleSearch('${itemWord}')">${itemWord}</span>
-          <span style="color:var(--text-muted); cursor:pointer; padding: 0 4px;" onclick="event.stopPropagation(); db.ref('${userPath}/${currentTab}/${itemWord}').remove()">✕</span>
+          <span style="color:var(--lh-text-muted); padding: 0 4px;" onclick="event.stopPropagation(); db.ref('${userPath}/${currentTab}/${itemWord}').remove()">✕</span>
         `;
         container.appendChild(row);
       });
-
       document.getElementById('history-count').innerText = history.length;
       document.getElementById('pinned-count').innerText = bookmarks.length;
     }
@@ -304,20 +454,6 @@ function prefetchPartition(event) {
       document.getElementById('tab-history').classList.toggle('active', tab === 'history'); 
       document.getElementById('tab-bookmarks').classList.toggle('active', tab === 'bookmarks'); 
       updateSidebar(); 
-    }
-
-    function clearCloud() { 
-      if (userPath && confirm("Permanently purge cloud history?")) {
-        db.ref(userPath + '/' + currentTab).remove(); 
-      }
-    }
-
-    function exportData() { 
-      const payload = new Blob([JSON.stringify({ history, bookmarks }, null, 2)], { type: 'application/json' }); 
-      const anchor = document.createElement('a'); 
-      anchor.href = URL.createObjectURL(payload); 
-      anchor.download = `LinguistHub_Backup_${Date.now()}.json`; 
-      anchor.click(); 
     }
   </script>
 </body>
