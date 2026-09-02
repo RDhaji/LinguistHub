@@ -160,6 +160,13 @@
       <button id="tab-history" class="tab active" onclick="setTab('history')">History (<span id="history-count">0</span>)</button>
       <button id="tab-bookmarks" class="tab" onclick="setTab('bookmarks')">Pinned (<span id="pinned-count">0</span>)</button>
     </div>
+    <div class="sort-bar">
+      <span id="sort-context-label">SORT HISTORY</span>
+      <div class="sort-actions">
+        <button id="sort-time" class="sort-btn active" onclick="setListSort('time')">Recent</button>
+        <button id="sort-alpha" class="sort-btn" onclick="setListSort('alpha')">A–Z</button>
+      </div>
+    </div>
     <div id="list-items"></div>
   </aside>
 
@@ -287,7 +294,11 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let history = [], bookmarks = [], lastWord = "", currentTab = 'history', userPath = "";
+    let historyData = {}, bookmarksData = {}, lastWord = "", currentTab = 'history', userPath = "";
+    let sortModes = {
+      history: localStorage.getItem('lh_sort_history') || 'time',
+      bookmarks: localStorage.getItem('lh_sort_bookmarks') || 'time'
+    };
 
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
     function toggleClearBtn() {
@@ -315,12 +326,16 @@
         document.getElementById('login-overlay').style.display = 'none';
         userPath = 'users/' + user.uid;
         db.ref(userPath + '/history').on('value', snap => {
-          const data = snap.val() || {};
-          history = Object.keys(data).sort((a, b) => data[b].timestamp - data[a].timestamp);
+          historyData = snap.val() || {};
           updateSidebar();
         });
         db.ref(userPath + '/bookmarks').on('value', snap => {
-          bookmarks = Object.keys(snap.val() || {});
+          const raw = snap.val() || {};
+          // Normalize legacy boolean flags to timestamp envelopes
+          bookmarksData = {};
+          Object.entries(raw).forEach(([k, v]) => {
+            bookmarksData[k] = (typeof v === 'object' && v.timestamp) ? v : { timestamp: Date.now() };
+          });
           updateSidebar();
           updateStarUI();
         });
@@ -625,38 +640,65 @@
 
     function toggleBookmark() { 
       if (!lastWord || !userPath) return;
-      if (bookmarks.includes(lastWord)) {
+      if (bookmarksData[lastWord]) {
         db.ref(userPath + '/bookmarks/' + lastWord).remove();
       } else {
-        db.ref(userPath + '/bookmarks/' + lastWord).set(true);
+        db.ref(userPath + '/bookmarks/' + lastWord).set({ timestamp: Date.now() });
       }
     }
 
     function updateStarUI() { 
-      document.getElementById('mainStar').classList.toggle('active', bookmarks.includes(lastWord));
+      document.getElementById('mainStar').classList.toggle('active', Boolean(bookmarksData[lastWord]));
+    }
+
+    function setListSort(mode) {
+      sortModes[currentTab] = mode;
+      localStorage.setItem(`lh_sort_${currentTab}`, mode);
+      syncSortControlsUI();
+      updateSidebar();
+    }
+
+    function syncSortControlsUI() {
+      const mode = sortModes[currentTab];
+      document.getElementById('sort-context-label').innerText = `SORT ${currentTab.toUpperCase()}`;
+      document.getElementById('sort-time').classList.toggle('active', mode === 'time');
+      document.getElementById('sort-alpha').classList.toggle('active', mode === 'alpha');
     }
 
     function updateSidebar() {
       const container = document.getElementById('list-items'); 
       container.innerHTML = "";
-      const activeList = currentTab === 'history' ? history : bookmarks;
-      activeList.forEach(itemWord => {
+      
+      const dataSource = currentTab === 'history' ? historyData : bookmarksData;
+      const keys = Object.keys(dataSource);
+      const activeSort = sortModes[currentTab];
+
+      if (activeSort === 'time') {
+        keys.sort((a, b) => (dataSource[b]?.timestamp || 0) - (dataSource[a]?.timestamp || 0));
+      } else if (activeSort === 'alpha') {
+        keys.sort((a, b) => a.localeCompare(b));
+      }
+
+      keys.forEach(itemWord => {
         const row = document.createElement('div'); 
         row.className = 'list-item';
         row.innerHTML = `
-          <span style="flex:1" onclick="handleSearch('${itemWord}')">${itemWord}</span>
+          <span style="flex:1; text-transform: capitalize;" onclick="handleSearch('${itemWord}')">${itemWord}</span>
           <span style="color:var(--lh-text-muted); padding: 0 4px;" onclick="event.stopPropagation(); db.ref('${userPath}/${currentTab}/${itemWord}').remove()">✕</span>
         `;
         container.appendChild(row);
       });
-      document.getElementById('history-count').innerText = history.length;
-      document.getElementById('pinned-count').innerText = bookmarks.length;
+
+      document.getElementById('history-count').innerText = Object.keys(historyData).length;
+      document.getElementById('pinned-count').innerText = Object.keys(bookmarksData).length;
+      syncSortControlsUI();
     }
 
     function setTab(tab) { 
       currentTab = tab; 
       document.getElementById('tab-history').classList.toggle('active', tab === 'history'); 
       document.getElementById('tab-bookmarks').classList.toggle('active', tab === 'bookmarks'); 
+      syncSortControlsUI();
       updateSidebar(); 
     }
   </script>
