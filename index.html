@@ -55,6 +55,7 @@
     .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
 
     .search-container { padding: 2rem 1rem 1rem 1rem; max-width: 680px; width: 100%; margin: 0 auto; }
+
     .input-wrapper { position: relative; display: flex; align-items: center; }
     #wordInput { width: 100%; padding: 0.85rem 2.8rem 0.85rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 1.1rem; outline: none; }
     #wordInput:focus { border-color: var(--accent); }
@@ -118,14 +119,15 @@
     <div class="search-container">
       <div class="input-wrapper">
         <input 
-          type="text" 
-          id="wordInput" 
-          placeholder="Lookup root, form, or affix..." 
-          autocomplete="off" 
-          autocapitalize="off" 
-          spellcheck="false"
-          oninput="toggleClearBtn()" 
-          onkeydown="if(event.key === 'Enter') handleSearch()"
+
+            type="text" 
+            id="wordInput" 
+            placeholder="Lookup root, form, or affix..." 
+            autocomplete="off" 
+            autocapitalize="off" 
+            spellcheck="false"
+            oninput="toggleClearBtn(); prefetchPartition(event)" 
+            onkeydown="if(event.key === 'Enter') handleSearch()"
         >
         <button id="clearBtn" onclick="clearSearchInput()">✕</button>
       </div>
@@ -222,7 +224,16 @@
       document.getElementById('loader').style.display = 'block';
       document.getElementById('results').style.display = 'none';
       toggleClearBtn();
-
+// Speculative Partition Prefetcher (0ms cache hits)
+const prefetchedLetters = new Set();
+function prefetchPartition(event) {
+  const char = event.target.value.trim().charAt(0).toLowerCase();
+  if (char && /^[a-z]$/.test(char) && !prefetchedLetters.has(char)) {
+    prefetchedLetters.add(char);
+    fetch(`./by-letter/structured_${char}.json`, { priority: 'low' })
+      .catch(() => prefetchedLetters.delete(char));
+  }
+}
       try {
         const firstLetter = word.charAt(0);
         const response = await fetch(`./by-letter/structured_${firstLetter}.json`);
