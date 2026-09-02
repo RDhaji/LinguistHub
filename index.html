@@ -427,7 +427,7 @@
     
     // --- AUTHORITATIVE OFFLINE INDEXEDDB SUBSYSTEM ---
     const IDB_NAME = 'LinguistHub_Core';
-    const IDB_VER = 1;
+    const IDB_VER = 2; // Bumped to force clean schema provision
 
     function openIDB() {
       return new Promise((resolve, reject) => {
@@ -444,33 +444,50 @@
           }
         };
         req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.onerror = () => reject(req.error || new Error('IDB open failed'));
+        req.onblocked = () => {
+          console.warn('[IDB Blocked] Close other open tabs running LinguistHub');
+          resolve(null);
+        };
       });
     }
 
     async function queryLexicon(query) {
       const term = query.trim().toLowerCase();
-      const db = await openIDB();
+      try {
+        const db = await Promise.race([
+          openIDB(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('IDB Timeout')), 1200))
+        ]);
 
-      return new Promise((resolve) => {
-        const tx = db.transaction('clusters', 'readonly');
-        const store = tx.objectStore('clusters');
+        if (!db || !db.objectStoreNames.contains('clusters')) return null;
 
-        // Primary match
-        const directReq = store.get(term);
-        directReq.onsuccess = () => {
-          if (directReq.result) return resolve(directReq.result);
+        return await new Promise((resolve) => {
+          const tx = db.transaction('clusters', 'readonly');
+          tx.onerror = () => resolve(null);
+          tx.onabort = () => resolve(null);
 
-          // Secondary stem inverted index lookup
-          const stemReq = store.index('stems').get(term);
-          stemReq.onsuccess = () => resolve(stemReq.result || null);
-          stemReq.onerror = () => resolve(null);
-        };
-        directReq.onerror = () => resolve(null);
-      });
+          const store = tx.objectStore('clusters');
+          const directReq = store.get(term);
+
+          directReq.onsuccess = () => {
+            if (directReq.result) return resolve(directReq.result);
+            try {
+              const stemReq = store.index('stems').get(term);
+              stemReq.onsuccess = () => resolve(stemReq.result || null);
+              stemReq.onerror = () => resolve(null);
+            } catch (_) {
+              resolve(null);
+            }
+          };
+          directReq.onerror = () => resolve(null);
+        });
+      } catch (err) {
+        console.warn('[IDB Query Degraded]', err);
+        return null;
+      }
     }
-
-    async function ensureLexiconHydrated() {
+async function ensureLexiconHydrated() {
       const db = await openIDB();
       const isHydrated = await new Promise((resolve) => {
         const tx = db.transaction('meta', 'readonly');
