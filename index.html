@@ -97,7 +97,7 @@
     .pos-tag-label::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background-color: var(--lh-accent-orange); border-radius: 2px; }
 
     .arabic-badge-container { display: flex; justify-content: center; margin: 0.5rem 0 1.5rem; min-height: 54px; }
-    .arabic-badge { background-color: var(--lh-primary-blue); color: var(--lh-text-white); font-family: 'Aref Ruqaa', serif; font-size: 1.6rem; font-weight: 700; padding: 0.5rem 2.2rem; border-radius: var(--lh-radius-md); direction: rtl; text-align: center; }
+    .arabic-badge { background-color: var(--lh-primary-blue); color: var(--lh-text-white); font-family: 'Aref Ruqaa', serif; font-size: 2.16rem; font-weight: 700; padding: 0.4rem 2.4rem; line-height: 1.2; border-radius: var(--lh-radius-md); direction: rtl; text-align: center; }
 
     .definition-container { background-color: var(--lh-sub-card-bg); border-radius: var(--lh-radius-md); padding: 1.25rem 1.5rem; position: relative; overflow: hidden; font-size: 0.95rem; color: var(--lh-text-primary); margin-bottom: 1.25rem; border-left: 4px solid var(--lh-accent-orange); }
     .definition-container .pos-label { font-style: italic; font-weight: 600; color: var(--lh-primary-blue); margin-right: 0.35rem; }
@@ -343,58 +343,69 @@
         adverb: new Set(baseForms.adverb || [])
       };
 
-      // Ingest Merriam-Webster Run-on derivations (uro / dro / stems)
+      // 1. Ingest Merriam-Webster Run-ons (uro / dro) and Stems
       if (Array.isArray(mwData)) {
         mwData.forEach(entry => {
           if (entry.uro) {
             entry.uro.forEach(u => {
-              const formWord = u.ure?.replace(/\*/g, '');
-              const fl = u.fl?.toLowerCase();
-              if (formWord && fl) {
+              const formWord = u.ure?.replace(/\*/g, '').toLowerCase();
+              const fl = u.fl?.toLowerCase() || '';
+              if (formWord) {
                 if (fl.includes('noun')) result.noun.add(formWord);
-                if (fl.includes('verb')) result.verb.add(formWord);
-                if (fl.includes('adjective')) result.adjective.add(formWord);
-                if (fl.includes('adverb')) result.adverb.add(formWord);
+                else if (fl.includes('verb')) result.verb.add(formWord);
+                else if (fl.includes('adj')) result.adjective.add(formWord);
+                else if (fl.includes('adv')) result.adverb.add(formWord);
               }
             });
           }
+
           if (entry.meta?.stems) {
-            entry.meta.stems.forEach(s => {
-              const stem = s.toLowerCase();
-              if (stem.endsWith('ness') || stem.endsWith('ment') || stem.endsWith('tion')) result.noun.add(stem);
-              else if (stem.endsWith('ly')) result.adverb.add(stem);
-              else if (stem.endsWith('ful') || stem.endsWith('less') || stem.endsWith('able') || stem.endsWith('ive')) result.adjective.add(stem);
+            entry.meta.stems.forEach(rawStem => {
+              const stem = rawStem.toLowerCase();
+              if (stem === word) return;
+
+              // Structural POS sorting based on derivational morphemes
+              if (/(?:tion|sion|ment|ness|ance|ence|or|er|ist|ity)$/.test(stem)) {
+                result.noun.add(stem);
+              } else if (/(?:ate|ify|ize|ise|en)$/.test(stem)) {
+                result.verb.add(stem);
+              } else if (/(?:ive|able|ible|al|ful|less|ous|ic|ish)$/.test(stem)) {
+                result.adjective.add(stem);
+              } else if (/(?:ly|wise|ward)$/.test(stem)) {
+                result.adverb.add(stem);
+              }
             });
           }
         });
       }
 
-      // Algorithmic Fallback Affix Expansion
-      const affixes = [
-        { prefix: '', stem: word },
-        { prefix: 'un', stem: word.startsWith('un') ? word.slice(2) : 'un' + word }
-      ];
+      // 2. Latinate / Germanic Derivational Affix Expansions
+      const roots = [word];
+      if (word.endsWith('e')) roots.push(word.slice(0, -1));
+      if (word.endsWith('t')) roots.push(word);
 
-      affixes.forEach(({ stem }) => {
-        if (!stem) return;
-        const base = stem.endsWith('y') ? stem.slice(0, -1) : stem;
-        const isY = stem.endsWith('y');
+      roots.forEach(r => {
+        // Latinate nominals (-ion, -or, -ivity)
+        result.noun.add(r + 'ion');
+        result.noun.add(r + 'or');
+        result.noun.add(r + 'ivity');
+        // Adjectivals (-ive, -able)
+        result.adjective.add(r + 'ive');
+        result.adjective.add(r + 'able');
+        // Verbalizers (-ivate)
+        result.verb.add(r + 'ivate');
+      });
 
-        // Nouns
-        result.noun.add(isY ? base + 'iness' : stem + 'ness');
-        // Adverbs
-        result.adverb.add(isY ? base + 'ily' : stem + 'ly');
-        // Adjectives
-        if (stem.endsWith('y')) result.adjective.add(stem);
-        result.adjective.add(isY ? base + 'iful' : stem + 'ful');
-        result.adjective.add(isY ? base + 'iless' : stem + 'less');
+      // Filter invalid nonce artifacts generated by blind affixing
+      const filterForms = set => Array.from(set).filter(w => {
+        return w && w.length > 2 && !w.endsWith('actness') && !w.endsWith('actless');
       });
 
       return {
-        noun: Array.from(result.noun).filter(Boolean),
-        verb: Array.from(result.verb).filter(Boolean),
-        adjective: Array.from(result.adjective).filter(Boolean),
-        adverb: Array.from(result.adverb).filter(Boolean)
+        noun: filterForms(result.noun),
+        verb: filterForms(result.verb),
+        adjective: filterForms(result.adjective),
+        adverb: filterForms(result.adverb)
       };
     }
 
