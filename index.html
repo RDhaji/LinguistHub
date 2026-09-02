@@ -7,7 +7,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Marhey:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#1d64ec">
@@ -97,7 +97,7 @@
     .pos-tag-label::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background-color: var(--lh-accent-orange); border-radius: 2px; }
 
     .arabic-badge-container { display: flex; justify-content: center; margin: 0.5rem 0 1.5rem; min-height: 54px; }
-    .arabic-badge { background-color: var(--lh-primary-blue); color: var(--lh-text-white); font-family: 'Marhey', system-ui, sans-serif; font-size: 1.6rem; font-weight: 700; padding: 0.5rem 2.2rem; border-radius: var(--lh-radius-md); direction: rtl; text-align: center; }
+    .arabic-badge { background-color: var(--lh-primary-blue); color: var(--lh-text-white); font-family: 'Aref Ruqaa', serif; font-size: 1.6rem; font-weight: 700; padding: 0.5rem 2.2rem; border-radius: var(--lh-radius-md); direction: rtl; text-align: center; }
 
     .definition-container { background-color: var(--lh-sub-card-bg); border-radius: var(--lh-radius-md); padding: 1.25rem 1.5rem; position: relative; overflow: hidden; font-size: 0.95rem; color: var(--lh-text-primary); margin-bottom: 1.25rem; border-left: 4px solid var(--lh-accent-orange); }
     .definition-container .pos-label { font-style: italic; font-weight: 600; color: var(--lh-primary-blue); margin-right: 0.35rem; }
@@ -334,8 +334,8 @@
       firebase.auth().signInWithPopup(provider).catch(e => alert(e.message));
     }
 
-    // Algorithmic Morphological Derivation
-    function deriveMorphology(word, baseForms) {
+    // Comprehensive Multi-Form Morphology Engine
+    function deriveMorphology(word, baseForms, mwData = []) {
       const result = {
         noun: new Set(baseForms.noun || []),
         verb: new Set(baseForms.verb || []),
@@ -343,30 +343,58 @@
         adverb: new Set(baseForms.adverb || [])
       };
 
-      if (word.endsWith('y')) {
-        const stem = word.slice(0, -1);
-        result.adjective.add(word);
-        result.noun.add(stem + 'iness');
-        result.adverb.add(stem + 'ily');
-      } else if (word.endsWith('ness')) {
-        const stem = word.slice(0, -4);
-        result.noun.add(word);
-        result.adjective.add(stem.endsWith('i') ? stem.slice(0, -1) + 'y' : stem);
-      } else if (word.endsWith('ate')) {
-        result.verb.add(word);
-        result.noun.add(word + 'ment');
-        result.noun.add(word.slice(0, -1) + 'ion');
-        result.adjective.add(word.slice(0, -1) + 'ive');
-      } else if (word.endsWith('tion') || word.endsWith('sion')) {
-        result.noun.add(word);
-        result.verb.add(word.replace(/(?:tion|sion)$/, 'te'));
+      // Ingest Merriam-Webster Run-on derivations (uro / dro / stems)
+      if (Array.isArray(mwData)) {
+        mwData.forEach(entry => {
+          if (entry.uro) {
+            entry.uro.forEach(u => {
+              const formWord = u.ure?.replace(/\*/g, '');
+              const fl = u.fl?.toLowerCase();
+              if (formWord && fl) {
+                if (fl.includes('noun')) result.noun.add(formWord);
+                if (fl.includes('verb')) result.verb.add(formWord);
+                if (fl.includes('adjective')) result.adjective.add(formWord);
+                if (fl.includes('adverb')) result.adverb.add(formWord);
+              }
+            });
+          }
+          if (entry.meta?.stems) {
+            entry.meta.stems.forEach(s => {
+              const stem = s.toLowerCase();
+              if (stem.endsWith('ness') || stem.endsWith('ment') || stem.endsWith('tion')) result.noun.add(stem);
+              else if (stem.endsWith('ly')) result.adverb.add(stem);
+              else if (stem.endsWith('ful') || stem.endsWith('less') || stem.endsWith('able') || stem.endsWith('ive')) result.adjective.add(stem);
+            });
+          }
+        });
       }
 
+      // Algorithmic Fallback Affix Expansion
+      const affixes = [
+        { prefix: '', stem: word },
+        { prefix: 'un', stem: word.startsWith('un') ? word.slice(2) : 'un' + word }
+      ];
+
+      affixes.forEach(({ stem }) => {
+        if (!stem) return;
+        const base = stem.endsWith('y') ? stem.slice(0, -1) : stem;
+        const isY = stem.endsWith('y');
+
+        // Nouns
+        result.noun.add(isY ? base + 'iness' : stem + 'ness');
+        // Adverbs
+        result.adverb.add(isY ? base + 'ily' : stem + 'ly');
+        // Adjectives
+        if (stem.endsWith('y')) result.adjective.add(stem);
+        result.adjective.add(isY ? base + 'iful' : stem + 'ful');
+        result.adjective.add(isY ? base + 'iless' : stem + 'less');
+      });
+
       return {
-        noun: Array.from(result.noun),
-        verb: Array.from(result.verb),
-        adjective: Array.from(result.adjective),
-        adverb: Array.from(result.adverb)
+        noun: Array.from(result.noun).filter(Boolean),
+        verb: Array.from(result.verb).filter(Boolean),
+        adjective: Array.from(result.adjective).filter(Boolean),
+        adverb: Array.from(result.adverb).filter(Boolean)
       };
     }
 
@@ -390,7 +418,14 @@
           entry = partition[word] || null;
         }
 
-        const resolvedForms = deriveMorphology(word, entry?.forms || {});
+        let mwEntries = [];
+        if (MW_DICT_KEY && MW_DICT_KEY !== "YOUR_MW_DICTIONARY_KEY_HERE") {
+          try {
+            const mwRes = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${encodeURIComponent(word)}?key=${MW_DICT_KEY}`);
+            mwEntries = await mwRes.json();
+          } catch (_) {}
+        }
+        const resolvedForms = deriveMorphology(word, entry?.forms || {}, mwEntries);
         
         let detectedPos = "WORD";
         for (const [pos, words] of Object.entries(resolvedForms)) {
@@ -524,32 +559,56 @@
       arContainer.innerText = "—";
     }
 
-    let audioStream = null;
+    const audioCache = new Map();
+    let currentAudio = null;
+
     async function playAudio() {
       if (!lastWord) return;
+      const target = lastWord;
+
+      // Check In-Memory Audio Cache to prevent repeated hits and voice shifting
+      if (audioCache.has(target)) {
+        if (currentAudio) currentAudio.pause();
+        currentAudio = new Audio(audioCache.get(target));
+        await currentAudio.play();
+        return;
+      }
+
       if (GOOGLE_API_KEY && GOOGLE_API_KEY !== "YOUR_GOOGLE_KEY_HERE") {
         try {
           const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              input: { text: lastWord },
+              input: { text: target },
               voice: { languageCode: "en-US", name: "en-US-Chirp3-HD-Laomedeia" },
-              audioConfig: { audioEncoding: "MP3" }
+              audioConfig: { audioEncoding: "MP3", speakingRate: 0.95 }
             })
           });
           const data = await res.json();
           if (data.audioContent) {
-            if (audioStream) audioStream.pause();
-            audioStream = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-            await audioStream.play();
+            const audioUri = `data:audio/mp3;base64,${data.audioContent}`;
+            audioCache.set(target, audioUri);
+            if (currentAudio) currentAudio.pause();
+            currentAudio = new Audio(audioUri);
+            await currentAudio.play();
             return;
           }
-        } catch (_) {}
+        } catch (e) {
+          console.warn("[TTS API Error - Falling back]", e);
+        }
       }
+
+      // Strictly Deterministic Web Speech Fallback (Locked Voice Instance)
       window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(lastWord);
+      const utter = new SpeechSynthesisUtterance(target);
       utter.lang = 'en-US';
+      utter.rate = 0.9;
+      
+      const voices = window.speechSynthesis.getVoices();
+      const fixedVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.default)) || voices.find(v => v.lang.startsWith('en'));
+      if (fixedVoice) utter.voice = fixedVoice;
+      
       window.speechSynthesis.speak(utter);
     }
 
