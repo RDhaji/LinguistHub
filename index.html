@@ -519,65 +519,93 @@
       if (loader) loader.style.display = 'block';
       if (results) results.style.display = 'none';
 
-      // 1. Resolve deterministically from IndexedDB
-      const cluster = await queryLexicon(word);
+      try {
+        // 1. Resolve deterministically from IndexedDB
+        let cluster = await queryLexicon(word);
 
-      if (cluster) {
-        document.getElementById('r-word').innerText = cluster.word;
-        document.getElementById('r-pos').innerText = (cluster.pos || 'word').toUpperCase();
-        document.getElementById('r-syll').innerText = cluster.word;
-
-        // Definition container
-        const defPos = document.getElementById('r-def-pos');
-        const defText = document.getElementById('r-def-text');
-        if (defPos) defPos.innerText = (cluster.pos || '').toLowerCase();
-        if (defText) defText.innerText = cluster.definition || `Lexical entry for ${cluster.word}.`;
-
-        // 4-Column Morphological Matrix Resolution
-        const matrixMap = {
-          noun: 'morph-noun',
-          verb: 'morph-verb',
-          adjective: 'morph-adj',
-          adverb: 'morph-adv'
-        };
-
-        Object.entries(matrixMap).forEach(([posKey, domId]) => {
-          const col = document.getElementById(domId);
-          if (!col) return;
-          const forms = cluster.forms?.[posKey] || [];
-          if (forms.length > 0) {
-            col.innerHTML = forms.map(f => `<span class="matrix-pill" onclick="handleSearch('${f}')">${f}</span>`).join('');
-          } else {
-            col.innerHTML = `<span class="matrix-empty-cell">—</span>`;
+        // 2. Fallback to Letter Partition if IndexedDB is still hydrating
+        if (!cluster) {
+          const char = word[0];
+          if (char >= 'a' && char <= 'z') {
+            try {
+              const res = await fetch(`./by-letter/structured_${char}.json`);
+              if (res.ok) {
+                const partition = await res.json();
+                if (partition[word]) {
+                  const entry = partition[word];
+                  cluster = {
+                    word: word,
+                    pos: entry.pos || 'word',
+                    definition: entry.definition || '',
+                    forms: entry.forms || {},
+                    synonyms: entry.synonyms || [],
+                    antonyms: entry.antonyms || [],
+                    ar: entry.ar || ''
+                  };
+                }
+              }
+            } catch (err) {
+              console.warn('[Partition Fallback Failed]', err);
+            }
           }
-        });
+        }
 
-        // Synonyms & Antonyms
-        renderChips(cluster.synonyms || [], 'r-synonyms', 'synonym');
-        renderChips(cluster.antonyms || [], 'r-antonyms', 'antonym');
+        if (cluster) {
+          document.getElementById('r-word').innerText = cluster.word;
+          document.getElementById('r-pos').innerText = (cluster.pos || 'word').toUpperCase();
+          document.getElementById('r-syll').innerText = cluster.word;
 
-        // Arabic Badge
-        const arBadge = document.getElementById('r-ar');
-        if (cluster.ar) {
-          arBadge.innerText = cluster.ar;
+          const defPos = document.getElementById('r-def-pos');
+          const defText = document.getElementById('r-def-text');
+          if (defPos) defPos.innerText = (cluster.pos || '').toLowerCase();
+          if (defText) defText.innerText = cluster.definition || `Lexical entry for ${cluster.word}.`;
+
+          // Matrix
+          const matrixMap = {
+            noun: 'morph-noun',
+            verb: 'morph-verb',
+            adjective: 'morph-adj',
+            adverb: 'morph-adv'
+          };
+
+          Object.entries(matrixMap).forEach(([posKey, domId]) => {
+            const col = document.getElementById(domId);
+            if (!col) return;
+            const forms = cluster.forms?.[posKey] || [];
+            if (forms.length > 0) {
+              col.innerHTML = forms.map(f => `<span class="matrix-pill" onclick="handleSearch('${f}')">${f}</span>`).join('');
+            } else {
+              col.innerHTML = `<span class="matrix-empty-cell">—</span>`;
+            }
+          });
+
+          // Synonyms & Antonyms
+          renderChips(cluster.synonyms || [], 'r-synonyms', 'synonym');
+          renderChips(cluster.antonyms || [], 'r-antonyms', 'antonym');
+
+          // Arabic
+          const arBadge = document.getElementById('r-ar');
+          if (cluster.ar) {
+            arBadge.innerText = cluster.ar;
+          } else {
+            fetchArabicTranslation(cluster.word);
+          }
+
+          // Persistence
+          if (userPath && auth.currentUser) {
+            db.ref(userPath + '/history/' + cluster.word).set({ timestamp: Date.now() });
+          }
+          updateStarUI();
+
+          if (results) results.style.display = 'block';
         } else {
-          fetchArabicTranslation(cluster.word);
+          alert(`No lexical entry found for "${word}".`);
         }
-
-        // Firebase Sync
-        if (userPath && auth.currentUser) {
-          db.ref(userPath + '/history/' + cluster.word).set({ timestamp: Date.now() });
-        }
-        updateStarUI();
-
+      } catch (globalErr) {
+        console.error('[Search Engine Crash]', globalErr);
+      } finally {
         if (loader) loader.style.display = 'none';
-        if (results) results.style.display = 'block';
-        return;
       }
-
-      // 2. Fallback to network MW pipeline if cluster is not found
-      console.warn(`[IDB Miss] ${word} -> Falling back to live endpoints.`);
-      await executeNetworkFallback(word);
     }
 
     function updateSidebar() {
