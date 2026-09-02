@@ -525,6 +525,38 @@ async function ensureLexiconHydrated() {
     }
     ensureLexiconHydrated();
 
+    
+    function renderChips(items, containerId, type) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      if (!items || !items.length) {
+        container.innerHTML = '<span class="matrix-empty-cell">—</span>';
+        return;
+      }
+      container.innerHTML = items
+        .map(item => `<span class="matrix-pill chip-${type}" onclick="handleSearch('${item}')">${item}</span>`)
+        .join('');
+    }
+
+    function syncSortControlsUI() {}
+
+    async function fetchArabicTranslation(word) {
+      const arBadge = document.getElementById('r-ar');
+      if (!arBadge) return;
+      try {
+        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|ar`);
+        const data = await res.json();
+        const translation = data?.responseData?.translatedText;
+        if (translation && !translation.toLowerCase().includes('mymemory')) {
+          arBadge.innerText = translation;
+          return;
+        }
+      } catch (err) {
+        console.warn('[Arabic Translation Failed]', err);
+      }
+      arBadge.innerText = '—';
+    }
+
     async function handleSearch(searchWord) {
       const input = document.getElementById('wordInput');
       const word = (searchWord || input.value).trim().toLowerCase();
