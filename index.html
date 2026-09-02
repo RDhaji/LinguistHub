@@ -1,343 +1,313 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LinguistHub | Gold Master</title>
-    <link href="https://fonts.googleapis.com/css2?family=Amiri&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LinguistHub Master</title>
 
-    <style>
-        :root { 
-            --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --accent: #2563eb; 
-            --border: #e2e8f0; --sidebar: #ffffff; --item-hover: #f8fafc; 
-            --star-active: #f59e0b; --star-inactive: #cbd5e1; --danger: #f43f5e;
-            --shadow: 0 4px 20px -2px rgb(0 0 0 / 0.05);
-        }
-        [data-theme="dark"] { 
-            --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #3b82f6; 
-            --border: #334155; --sidebar: #0f172a; --item-hover: #1e293b;
-        }
-        
-        body { font-family: 'Inter', sans-serif; margin: 0; display: flex; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; transition: 0.3s; }
-        
-        #sidebar { 
-            width: 280px; min-width: 280px; background: var(--sidebar); 
-            border-right: 1px solid var(--border); display: flex; flex-direction: column; 
-            z-index: 10; transition: transform 0.3s ease, margin-left 0.3s ease;
-        }
-        #sidebar.collapsed { margin-left: -280px; }
-
-        .sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); }
-        .tab-btn { flex: 1; padding: 15px; border: none; background: none; cursor: pointer; color: var(--text); font-weight: 800; opacity: 0.3; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; }
-        .tab-btn.active { opacity: 1; border-bottom: 3px solid var(--accent); }
-        #list-items { flex: 1; overflow-y: auto; }
-        .list-item { padding: 10px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; cursor: pointer; transition: 0.2s; gap: 12px; }
-        .list-item:hover { background: var(--item-hover); }
-        .item-text { flex: 1; font-weight: 600; font-size: 0.9rem; text-transform: capitalize; }
-        
-        .sidebar-footer { padding: 15px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
-        .btn-side { width: 100%; padding: 10px; border-radius: 10px; border: none; cursor: pointer; font-weight: 800; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
-
-        main { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; position: relative; }
-        
-        #menu-toggle {
-            position: absolute; left: 20px; top: 20px; background: var(--card); border: 1px solid var(--border);
-            border-radius: 10px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            box-shadow: var(--shadow); z-index: 20; color: var(--text); font-size: 1.1rem;
-        }
-
-        .theme-toggle { position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 1.4rem; cursor: pointer; z-index: 20; }
-
-        .content-wrapper { width: 100%; max-width: 800px; margin-top: 50px; } 
-        
-        .search-container { position: relative; display: flex; gap: 12px; width: 100%; margin-bottom: 25px; }
-        .search-wrapper { position: relative; flex: 1; display: flex; }
-        input[type="text"] { 
-            width: 100%; padding: 15px 45px 15px 20px; border-radius: 16px; border: 1px solid var(--border); 
-            background: var(--card); color: var(--text); font-size: 1.15rem; outline: none; box-shadow: var(--shadow);
-        }
-        .clear-search { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--star-inactive); font-weight: bold; font-size: 0.9rem; display: none; z-index: 5; }
-        .btn-search { background: var(--accent); color: white; border: none; padding: 0 30px; border-radius: 16px; cursor: pointer; font-weight: 800; text-transform: uppercase; font-size: 0.75rem; }
-
-        .res-container { background: var(--card); border-radius: 24px; padding: 25px; border: 1px solid var(--border); box-shadow: var(--shadow); width: 100%; box-sizing: border-box; }
-        .res-header { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; }
-        
-        .main-star { width: 26px !important; height: 26px !important; min-width: 26px; fill: var(--star-inactive); cursor: pointer; transition: 0.2s; }
-        .main-star.active { fill: var(--star-active) !important; }
-        
-        .underline { height: 4px; background: #f59e0b; border-radius: 10px; width: 60px; margin-top: 4px; }
-        
-        #r-word { margin: 0; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px; text-transform: capitalize; overflow-wrap: anywhere; }
-
-        .arabic-box { background: var(--accent); padding: 8px 20px; border-radius: 14px; margin-bottom: 15px; text-align: center; direction: rtl; color: white; max-width: fit-content; margin-left: auto; margin-right: auto; }
-        .arabic-text { font-family: 'Amiri', serif; font-size: 2.2rem; font-weight: bold; line-height: 1.2; }
-
-        .synonym-item { display: inline-block; margin: 2px; padding: 4px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; font-size: 0.7rem; font-weight: 800; color: var(--accent); cursor: pointer; }
-        .antonym-item { display: inline-block; margin: 2px; padding: 4px 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 0.75rem; font-weight: 700; color: #b45309; cursor: pointer; }
-
-        #r-def { background: var(--bg); padding: 15px; border-radius: 14px; border-left: 5px solid #f59e0b; margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4; }
-        
-        #login-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.98); z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; color:white; text-align:center; }
-        .loader { display: none; text-align: center; padding: 20px; font-weight: 900; font-size: 1rem; color: var(--accent); letter-spacing: 5px; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
-        
-        #history-count, #pinned-count { font-size: 0.65rem; margin-left: 8px; padding: 3px 8px; border-radius: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
-        #history-count { background-color: rgba(148, 163, 184, 0.15); color: #64748b; }
-        [data-theme="dark"] #history-count { background-color: rgba(148, 163, 184, 0.1); color: #94a3b8; }
-        #pinned-count { background-color: rgba(245, 158, 11, 0.15); color: #d97706; }
-        [data-theme="dark"] #pinned-count { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-      
-        .matrix-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: var(--bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-top: 20px; }
-        .matrix-column { display: flex; flex-direction: column; align-items: center; background: var(--card); border-radius: 8px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .matrix-header { font-size: 0.8rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 2px solid var(--border); padding-bottom: 4px; width: 100%; text-align: center; }
-        .matrix-word { font-size: 0.85rem; font-weight: 600; color: var(--accent); padding: 4px 0; cursor: pointer; transition: color 0.2s; }
-        .matrix-word:hover { color: #b45309; }
-        .matrix-empty { font-size: 0.75rem; color: var(--text); opacity: 0.5; font-style: italic; }
-    </style>
+  <!-- PWA & Mobile Meta -->
   <link rel="manifest" href="./manifest.json">
-</head>
-<body data-theme="light">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="./icon.png">
 
-    <div id="login-overlay">
-        <h1 style="font-size:3rem; letter-spacing:-2px; margin-bottom:10px;">LinguistHub</h1>
-        <button onclick="login()" style="padding:18px 45px; border-radius:45px; border:none; background:#2563eb; color:white; font-weight:800; cursor:pointer;">OPEN ARCHIVE</button>
+  <!-- External Infrastructure: Firebase 8.x -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --border: #334155;
+      --star: #e2e8f0;
+      --star-active: #eab308;
+    }
+
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --border: #e2e8f0;
+      --star: #94a3b8;
+      --star-active: #eab308;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+    #sidebar { width: 320px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: transform 0.2s ease; z-index: 20; }
+    #sidebar.collapsed { transform: translateX(-100%); position: absolute; height: 100%; }
+    #main-content { flex: 1; display: flex; flex-direction: column; position: relative; overflow-y: auto; }
+
+    header { padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface); }
+    .btn { background: var(--accent); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 6px; cursor: pointer; font-weight: 500; }
+    .btn:hover { background: var(--accent-hover); }
+    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+
+    .search-container { padding: 2rem 1rem 1rem 1rem; max-width: 680px; width: 100%; margin: 0 auto; }
+    .input-wrapper { position: relative; display: flex; align-items: center; }
+    #wordInput { width: 100%; padding: 0.85rem 2.8rem 0.85rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 1.1rem; outline: none; }
+    #wordInput:focus { border-color: var(--accent); }
+    #clearBtn { position: absolute; right: 0.8rem; background: none; border: none; color: var(--text-muted); cursor: pointer; display: none; font-size: 1.1rem; }
+
+    #results { max-width: 680px; width: 100%; margin: 0 auto; padding: 1rem; display: none; }
+    .word-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+    .word-title { font-size: 2rem; font-weight: 700; }
+    .star-icon { cursor: pointer; font-size: 1.8rem; color: var(--star); transition: color 0.15s; }
+    .star-icon.active { color: var(--star-active); }
+    .meta-row { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; font-size: 0.95rem; color: var(--text-muted); }
+    .definition-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; line-height: 1.6; }
+
+    .tab-bar { display: flex; border-bottom: 1px solid var(--border); }
+    .tab { flex: 1; padding: 0.75rem; text-align: center; cursor: pointer; background: transparent; color: var(--text-muted); border: none; font-weight: 600; }
+    .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+    #list-items { flex: 1; overflow-y: auto; padding: 0.5rem; }
+    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.75rem; border-radius: 6px; cursor: pointer; }
+    .list-item:hover { background: var(--border); }
+
+    #loader { display: none; text-align: center; padding: 2rem; color: var(--text-muted); }
+    #login-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); display: none; justify-content: center; align-items: center; z-index: 100; }
+    .modal { background: var(--surface); padding: 2rem; border-radius: 12px; text-align: center; border: 1px solid var(--border); max-width: 380px; width: 90%; }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <div id="login-overlay">
+    <div class="modal">
+      <h2 style="margin-bottom: 1rem;">LinguistHub Access</h2>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Authenticate to sync personal history and lexical bookmarks.</p>
+      <button class="btn" style="width: 100%;" onclick="login()">Continue with Google</button>
+    </div>
+  </div>
+
+  <aside id="sidebar">
+    <div style="padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+      <strong>Lexical Workspace</strong>
+      <button class="btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="toggleSidebar()">✕</button>
+    </div>
+    <div class="tab-bar">
+      <button id="tab-history" class="tab active" onclick="setTab('history')">History (<span id="history-count">0</span>)</button>
+      <button id="tab-bookmarks" class="tab" onclick="setTab('bookmarks')">Pinned (<span id="pinned-count">0</span>)</button>
+    </div>
+    <div id="list-items"></div>
+    <div style="padding: 0.75rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem;">
+      <button class="btn-secondary" style="flex:1; font-size: 0.8rem;" onclick="exportData()">Export</button>
+      <button class="btn-secondary" style="flex:1; font-size: 0.8rem; color: #ef4444;" onclick="clearCloud()">Purge</button>
+    </div>
+  </aside>
+
+  <main id="main-content">
+    <header>
+      <div style="display: flex; gap: 0.5rem;">
+        <button class="btn-secondary" onclick="toggleSidebar()">☰</button>
+        <button class="btn-secondary" onclick="toggleTheme()">🌓</button>
+      </div>
+      <div style="font-weight: 600;">LinguistHub v2</div>
+    </header>
+
+    <div class="search-container">
+      <div class="input-wrapper">
+        <input 
+          type="text" 
+          id="wordInput" 
+          placeholder="Lookup root, form, or affix..." 
+          autocomplete="off" 
+          autocapitalize="off" 
+          spellcheck="false"
+          oninput="toggleClearBtn()" 
+          onkeydown="if(event.key === 'Enter') handleSearch()"
+        >
+        <button id="clearBtn" onclick="clearSearchInput()">✕</button>
+      </div>
     </div>
 
-    <aside id="sidebar">
-        <div class="sidebar-tabs">
-           <button class="tab-btn active" id="tab-history" onclick="setTab('history')">History <span id="history-count">0</span></button>
-           <button class="tab-btn" id="tab-bookmarks" onclick="setTab('bookmarks')">Pinned <span id="pinned-count">0</span></button>
-        </div>
-        <div id="list-items"></div>
-        <div class="sidebar-footer">
-            <button class="btn-side" style="background:#f59e0b; color:white;" onclick="window.print()">PRINT STUDY</button>
-            <button class="btn-side" style="background:var(--accent); color:white;" onclick="exportData()">EXPORT</button>
-            <button class="btn-side" style="background:var(--danger); color:white;" onclick="clearCloud()">PURGE</button>
-        </div>
-    </aside>
+    <div id="loader">Fetching partition chunk...</div>
 
-    <main>
-        <button id="menu-toggle" onclick="toggleSidebar()">☰</button>
-        <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
-        
-        <div class="content-wrapper">
-            <div class="search-container">
-                <div class="search-wrapper">
-                    <input type="text" id="wordInput" name="dictionarySearch" autocomplete="off" placeholder="Analyze word..." onkeypress="if(event.key === 'Enter') handleSearch()" oninput="toggleClearBtn()">
-                    <span id="clearBtn" class="clear-search" onclick="clearSearchInput()">✕</span>
-                </div>
-                <button class="btn-search" onclick="handleSearch()">SEARCH</button>
-            </div>
+    <section id="results">
+      <div class="word-header">
+        <h1 id="r-word" class="word-title"></h1>
+        <span id="mainStar" class="star-icon" onclick="toggleBookmark()">★</span>
+      </div>
+      <div class="meta-row">
+        <span><strong>POS:</strong> <span id="r-pos"></span></span>
+        <span>•</span>
+        <span><strong>Syllables:</strong> <span id="r-syll"></span></span>
+      </div>
+      <div id="r-def" class="definition-box"></div>
+    </section>
+  </main>
 
-            <div id="loader" class="loader">SYNCING...</div>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js', { scope: './' })
+          .then(reg => console.log('[SW] Registered. Scope:', reg.scope))
+          .catch(err => console.error('[SW] Registration failed:', err));
+      });
+    }
 
-            <div id="results" style="display:none;">
-                <div class="res-container">
-                    <div class="res-header">
-                        <div style="display: flex; flex-direction: column; width: 100%;">
-                            <div style="display: flex; align-items: center; gap: 15px;">
-                                <h1 id="r-word"></h1>
-                                <button style="background:none; border:none; cursor:pointer; padding:0;" onclick="speak('en')">
-                                    <svg style="width:20px; fill:var(--accent);" viewBox="0 0 24 24"><path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16.02C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/></svg>
-                                </button>
-                                <svg class="main-star" id="mainStar" onclick="toggleBookmark()" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                            </div>
-                            <div class="underline"></div>
-                            <span id="r-pos" style="font-weight:900; font-size:0.6rem; color:var(--accent); text-transform:uppercase; margin-top:6px; display:block; letter-spacing:1.5px;"></span>
-                        </div>
-                    </div>
-
-                    <div class="arabic-box" id="arabic-box-container" style="display:none;">
-                        <div class="arabic-text" id="r-trans"></div>
-                    </div>
-
-                    <div id="r-def"></div>
-
-                    <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
-                        <div style="display: flex; gap: 20px; border-top: 1px solid var(--border); padding-top: 12px;">
-                            <div style="flex: 1;">
-                                <h4 style="margin-bottom:6px; opacity:0.6; font-size: 0.6rem; text-transform: uppercase;">Archive</h4>
-                                <p style="font-size:0.8rem; margin:0;"><strong>Syll:</strong> <span id="r-syll" style="color:var(--accent);"></span></p>
-                            </div>
-                            <div style="flex: 1;">
-                                <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Synonyms</h4>
-                                <div id="r-syns" style="margin-bottom: 12px;"></div>
-                                <h4 style="margin-bottom:8px; opacity:0.6; font-size: 0.65rem; text-transform: uppercase;">Antonyms</h4>
-                                <div id="r-ants"></div>
-                            </div>
-                        </div> 
-                        
-                        <div class="matrix-container" id="morph-matrix" style="display: none;">
-                            <div class="matrix-column">
-                                <div class="matrix-header">Noun</div>
-                                <div id="col-noun"></div>
-                            </div>
-                            <div class="matrix-column">
-                                <div class="matrix-header">Verb</div>
-                                <div id="col-verb"></div>
-                            </div>
-                            <div class="matrix-column">
-                                <div class="matrix-header">Adjective</div>
-                                <div id="col-adjective"></div>
-                            </div>
-                            <div class="matrix-column">
-                                <div class="matrix-header">Adverb</div>
-                                <div id="col-adverb"></div>
-                            </div>
-                        </div>
-
-                    </div> 
-                </div> 
-            </div> 
-        </div> 
-    </main>
-
-    <script>
-const firebaseConfig = { 
-        apiKey: "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc", 
-        authDomain: "lingustichub.firebaseapp.com", 
-        databaseURL: "https://lingustichub-default-rtdb.firebaseio.com/", 
-        projectId: "lingustichub" 
+    const firebaseConfig = { 
+      apiKey: "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc", 
+      authDomain: "lingustichub.firebaseapp.com", 
+      databaseURL: "https://lingustichub-default-rtdb.firebaseio.com/", 
+      projectId: "lingustichub" 
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const GOOGLE_KEY = "AIzaSyBGVL3ewn7589d9yX2qbbpde9DTVCWTyMc";
 
-    let history = [], bookmarks = [], lastWord = "", lastTrans = "", currentTab = 'history', userPath = "";
+    let history = [], bookmarks = [], lastWord = "", currentTab = 'history', userPath = "";
 
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
     function toggleTheme() { 
-        const c = document.body.getAttribute('data-theme'); 
-        document.body.setAttribute('data-theme', c === 'dark' ? 'light' : 'dark'); 
+      const current = document.body.getAttribute('data-theme'); 
+      document.body.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark'); 
     }
 
     function toggleClearBtn() {
-        const input = document.getElementById('wordInput');
-        const btn = document.getElementById('clearBtn');
-        btn.style.display = input.value.length > 0 ? 'block' : 'none';
+      const input = document.getElementById('wordInput');
+      document.getElementById('clearBtn').style.display = input.value.length > 0 ? 'block' : 'none';
     }
 
     function clearSearchInput() {
-        const input = document.getElementById('wordInput');
-        input.value = "";
-        toggleClearBtn();
-        input.focus();
+      const input = document.getElementById('wordInput');
+      input.value = "";
+      toggleClearBtn();
+      input.focus();
     }
 
     firebase.auth().onAuthStateChanged(user => {
-        if (user) {
-            document.getElementById('login-overlay').style.display = 'none';
-            userPath = 'users/' + user.uid;
-            db.ref(userPath + '/history').on('value', s => {
-                const data = s.val() || {};
-                history = Object.keys(data).sort((a,b) => data[b].timestamp - data[a].timestamp);
-                updateSidebar();
-            });
-            db.ref(userPath + '/bookmarks').on('value', s => {
-                bookmarks = Object.keys(s.val() || {});
-                updateSidebar();
-                updateStarUI();
-            });
-        } else {
-            document.getElementById('login-overlay').style.display = 'flex';
-        }
+      if (user) {
+        document.getElementById('login-overlay').style.display = 'none';
+        userPath = 'users/' + user.uid;
+        db.ref(userPath + '/history').on('value', snap => {
+          const data = snap.val() || {};
+          history = Object.keys(data).sort((a, b) => data[b].timestamp - data[a].timestamp);
+          updateSidebar();
+        });
+        db.ref(userPath + '/bookmarks').on('value', snap => {
+          bookmarks = Object.keys(snap.val() || {});
+          updateSidebar();
+          updateStarUI();
+        });
+      } else {
+        document.getElementById('login-overlay').style.display = 'flex';
+      }
     });
 
     function login() {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        firebase.auth().signInWithPopup(provider).catch(error => {
-            console.error(error);
-            alert("Login Blocked: " + error.message);
-        });
+      const provider = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithPopup(provider).catch(error => {
+        console.error(error);
+        alert("Authentication failed: " + error.message);
+      });
     }
 
-    // --- THE LOCAL HYBRID ENGINE ---
-   
-    // --- THE FIXED LOCAL HYBRID ENGINE ---
-async function handleSearch(searchWord) {
-    // 1. Initialize immediately so it can never be "undefined"
-    let allData = {}; 
-    
-    const word = searchWord || document.getElementById('wordInput').value.trim().toLowerCase();
-    if (!word) return;
+    async function handleSearch(searchWord) {
+      const input = document.getElementById('wordInput');
+      const word = (searchWord || input.value).trim().toLowerCase();
+      if (!word) return;
 
-    lastWord = word;
-    document.getElementById('wordInput').value = word;
-    document.getElementById('loader').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
-    document.getElementById('clearBtn').style.display = 'block';
+      lastWord = word;
+      input.value = word;
+      document.getElementById('loader').style.display = 'block';
+      document.getElementById('results').style.display = 'none';
+      toggleClearBtn();
 
-    try {
+      try {
         const firstLetter = word.charAt(0);
         const response = await fetch(`./by-letter/structured_${firstLetter}.json`);
         
-        if (!response.ok) throw new Error('Could not load dictionary file.');
+        if (!response.ok) throw new Error(`Partition chunk [${firstLetter}] unreadable.`);
 
-        allData = await response.json(); // Now this will safely overwrite the empty object
-        const entry = allData[word];
+        const partition = await response.json();
+        const entry = partition[word];
 
         if (!entry) {
-            alert("Word not found in local archive.");
-            return;
+          alert(`"${word}" not found in local index.`);
+          return;
         }
 
-        document.getElementById('results').style.display = 'block';
         document.getElementById('r-word').innerText = word;
         document.getElementById('r-pos').innerText = entry.pos || "N/A";
         document.getElementById('r-syll').innerText = entry.syllables ? entry.syllables.join('·') : word;
         document.getElementById('r-def').innerHTML = entry.definition || "No definition available.";
+        document.getElementById('results').style.display = 'block';
 
-        // ... (Keep the rest of your UI rendering code exactly as it was)
-        // ... (Paste your existing Synonyms/Antonyms/Matrix/Sidebar code here)
-        
-    } catch (error) {
-        console.error("Local Search Error:", error);
-        // This won't crash now because allData exists
-    } finally {
+        updateStarUI();
+
+        if (userPath) {
+          db.ref(userPath + '/history/' + word).set({ timestamp: Date.now() });
+        }
+      } catch (err) {
+        console.error("[Search Engine Failure]:", err);
+      } finally {
         document.getElementById('loader').style.display = 'none';
+      }
     }
-}
+
     function toggleBookmark() { 
-        if (bookmarks.includes(lastWord)) db.ref(userPath + '/bookmarks/' + lastWord).remove();
-        else db.ref(userPath + '/bookmarks/' + lastWord).set(true); 
+      if (!lastWord || !userPath) return;
+      if (bookmarks.includes(lastWord)) {
+        db.ref(userPath + '/bookmarks/' + lastWord).remove();
+      } else {
+        db.ref(userPath + '/bookmarks/' + lastWord).set(true);
+      }
     }
 
     function updateStarUI() { 
-        const s = document.getElementById('mainStar'); 
-        if (bookmarks.includes(lastWord)) s.classList.add('active'); else s.classList.remove('active'); 
+      const star = document.getElementById('mainStar'); 
+      star.classList.toggle('active', bookmarks.includes(lastWord));
     }
 
     function updateSidebar() {
-        const c = document.getElementById('list-items'); c.innerHTML = "";
-        const list = currentTab === 'history' ? history : bookmarks;
-        list.forEach(w => {
-            const item = document.createElement('div'); item.className = 'list-item';
-            item.innerHTML = `<span class="item-text" onclick="handleSearch('${w}')">${w}</span>
-            <span style="color:#cbd5e1; cursor:pointer;" onclick="event.stopPropagation(); db.ref(userPath+'/'+currentTab+'/'+'${w}').remove()">✕</span>`;
-            c.appendChild(item);
-        });
-        document.getElementById('history-count').innerText = history.length;
-        document.getElementById('pinned-count').innerText = bookmarks.length;
+      const container = document.getElementById('list-items'); 
+      container.innerHTML = "";
+      const activeList = currentTab === 'history' ? history : bookmarks;
+      
+      activeList.forEach(itemWord => {
+        const row = document.createElement('div'); 
+        row.className = 'list-item';
+        row.innerHTML = `
+          <span style="flex:1" onclick="handleSearch('${itemWord}')">${itemWord}</span>
+          <span style="color:var(--text-muted); cursor:pointer; padding: 0 4px;" onclick="event.stopPropagation(); db.ref('${userPath}/${currentTab}/${itemWord}').remove()">✕</span>
+        `;
+        container.appendChild(row);
+      });
+
+      document.getElementById('history-count').innerText = history.length;
+      document.getElementById('pinned-count').innerText = bookmarks.length;
     }
 
-    function setTab(t) { 
-        currentTab = t; 
-        document.getElementById('tab-history').classList.toggle('active', t==='history'); 
-        document.getElementById('tab-bookmarks').classList.toggle('active', t==='bookmarks'); 
-        updateSidebar(); 
+    function setTab(tab) { 
+      currentTab = tab; 
+      document.getElementById('tab-history').classList.toggle('active', tab === 'history'); 
+      document.getElementById('tab-bookmarks').classList.toggle('active', tab === 'bookmarks'); 
+      updateSidebar(); 
     }
 
-    function clearCloud() { if(confirm("Permanently purge cloud history?")) db.ref(userPath).remove(); }
+    function clearCloud() { 
+      if (userPath && confirm("Permanently purge cloud history?")) {
+        db.ref(userPath + '/' + currentTab).remove(); 
+      }
+    }
+
     function exportData() { 
-        const b = new Blob([JSON.stringify({history, bookmarks}, null, 2)], {type: 'application/json'}); 
-        const a = document.createElement('a'); a.href = URL.createObjectURL(b); 
-        a.download = 'LinguistHub_Backup.json'; a.click(); 
+      const payload = new Blob([JSON.stringify({ history, bookmarks }, null, 2)], { type: 'application/json' }); 
+      const anchor = document.createElement('a'); 
+      anchor.href = URL.createObjectURL(payload); 
+      anchor.download = `LinguistHub_Backup_${Date.now()}.json`; 
+      anchor.click(); 
     }
-    </script>
-    
+  </script>
 </body>
 </html>
