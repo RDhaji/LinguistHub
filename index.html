@@ -555,7 +555,7 @@ let _hydrationPromise = null;
             reject(err);
           };
 
-          worker.postMessage({ url: './compiled_lexicon_payload.json', chunkSize: 15000 });
+          worker.postMessage({ url: './compiled_lexicon_payload.json.gz', chunkSize: 10000 });
         });
       })().finally(() => {
         _hydrationPromise = null;

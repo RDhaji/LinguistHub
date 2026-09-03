@@ -1,5 +1,9 @@
 self.onmessage = async (e) => {
-  const { url = './compiled_lexicon_payload.json', chunkSize = 15000, dbName = 'LinguistHub_Core' } = e.data || {};
+  const { 
+    url = './compiled_lexicon_payload.json.gz', 
+    chunkSize = 10000, 
+    dbName = 'LinguistHub_Core' 
+  } = e.data || {};
 
   const openDB = () => new Promise((resolve, reject) => {
     const req = indexedDB.open(dbName);
@@ -10,8 +14,19 @@ self.onmessage = async (e) => {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch payload`);
-    
-    const rawData = await res.json();
+
+    let rawData;
+    if (url.endsWith('.gz') || res.headers.get('Content-Type')?.includes('gzip')) {
+      if (!('DecompressionStream' in self)) {
+        throw new Error('DecompressionStream not supported in this runtime context');
+      }
+      const decompressedStream = res.body.pipeThrough(new DecompressionStream('gzip'));
+      const decompressedResponse = new Response(decompressedStream);
+      rawData = await decompressedResponse.json();
+    } else {
+      rawData = await res.json();
+    }
+
     const total = rawData.length;
     const db = await openDB();
 
@@ -52,7 +67,7 @@ self.onmessage = async (e) => {
       self.postMessage({ type: 'PROGRESS', processed, total, pct });
     }
 
-    // Mark hydration complete in meta store
+    // Commit hydration token to meta store
     await new Promise((resolve, reject) => {
       const tx = db.transaction('meta', 'readwrite');
       tx.objectStore('meta').put({ key: 'is_hydrated', value: true, timestamp: Date.now() });
