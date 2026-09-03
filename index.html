@@ -750,6 +750,8 @@ let _hydrationPromise = null;
       updateSidebar(); 
     }
   </script>
+
+
 <script>
 (() => {
   let searchDebounceTimer = null;
@@ -763,13 +765,11 @@ let _hydrationPromise = null;
       const tx = db.transaction('clusters', 'readonly');
       const store = tx.objectStore('clusters');
       
-      // Fast-path: Exact headword hit
       const exactReq = store.get(term);
       exactReq.onsuccess = () => {
         const results = [];
         if (exactReq.result) results.push(exactReq.result);
 
-        // Bounded prefix sweep: term <= key <= term + ￿
         const range = IDBKeyRange.bound(term, term + '\uffff');
         const cursorReq = store.openCursor(range);
 
@@ -796,60 +796,136 @@ let _hydrationPromise = null;
       searchDebounceTimer = setTimeout(() => callback(...args), delayMs);
     };
   };
-})();
-</script>
 
-<script>
-(() => {
-  const searchInput = document.getElementById('search-input') || document.querySelector('input[type="search"]') || document.querySelector('input');
-  const resultsContainer = document.getElementById('results-container') || document.getElementById('results') || (() => {
-    const div = document.createElement('div');
-    div.id = 'results-container';
-    div.style.cssText = 'max-width:800px;margin:24px auto;padding:0 16px;display:flex;flex-direction:column;gap:12px;';
-    document.body.appendChild(div);
-    return div;
-  })();
+  function extractAffixes(lemma, derived) {
+    if (!derived || lemma === derived) return '∅';
+    let prefix = '', suffix = '';
+    
+    const commonPrefixes = ['un', 're', 'in', 'im', 'dis', 'en', 'em', 'non', 'over', 'mis', 'sub', 'pre', 'inter', 'trans'];
+    for (const p of commonPrefixes) {
+      if (derived.startsWith(p) && derived.slice(p.length).includes(lemma.slice(0, 3))) {
+        prefix = p + '- ';
+        break;
+      }
+    }
 
-  function renderClusters(clusters) {
+    const commonSuffixes = ['tion', 'sion', 'ation', 'ment', 'ence', 'ance', 'ity', 'ness', 'ship', 'er', 'or', 'able', 'ible', 'al', 'ial', 'ive', 'ate', 'ful', 'less', 'ous', 'ly', 'ing', 'ed'];
+    for (const s of commonSuffixes) {
+      if (derived.endsWith(s)) {
+        suffix = '-' + s;
+        break;
+      }
+    }
+
+    const res = (prefix + suffix).trim();
+    return res || '—';
+  }
+
+  window.renderClusters = function(clusters) {
+    let container = document.getElementById('results-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'results-container';
+      container.style.cssText = 'max-width:860px;margin:24px auto;padding:0 16px;display:flex;flex-direction:column;gap:16px;';
+      document.body.appendChild(container);
+    }
+
     const frag = document.createDocumentFragment();
 
     for (const item of clusters) {
       const card = document.createElement('article');
-      card.style.cssText = 'background:#1e293b;color:#f8fafc;border:1px solid #334155;border-radius:8px;padding:16px;font-family:system-ui,-apple-system,sans-serif;';
+      card.className = 'cluster-card';
+      card.style.cssText = 'background:#111827;border:1px solid #1f293d;border-radius:12px;padding:24px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.5);font-family:system-ui,-apple-system,sans-serif;';
 
       const forms = item.forms || {};
-      const posPills = ['noun', 'verb', 'adjective', 'adverb']
-        .filter(pos => forms[pos] && forms[pos].length)
-        .map(pos => `<span style="font-size:11px;text-transform:uppercase;background:#0f172a;color:#38bdf8;padding:2px 8px;border-radius:4px;border:1px solid #0284c7;font-weight:600;">${pos}: ${forms[pos].length}</span>`)
-        .join(' ');
+      const posCategories = [
+        { key: 'noun', label: 'Noun', color: '#38bdf8', items: forms.noun || [] },
+        { key: 'verb', label: 'Verb', color: '#34d399', items: forms.verb || [] },
+        { key: 'adjective', label: 'Adjective', color: '#fbbf24', items: forms.adjective || [] },
+        { key: 'adverb', label: 'Adverb', color: '#f43f5e', items: forms.adverb || [] }
+      ];
+
+      const columnsHtml = posCategories.map(col => {
+        const nodes = col.items.map(word => {
+          const isExact = word.toLowerCase() === item.word.toLowerCase();
+          const affixTag = extractAffixes(item.word.toLowerCase(), word.toLowerCase());
+          return `
+            <div class="affix-node" data-word="${word}" style="
+              display:flex;justify-content:space-between;align-items:center;
+              background:${isExact ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)'};
+              border:1px solid ${isExact ? '#38bdf8' : 'rgba(255, 255, 255, 0.08)'};
+              border-radius:6px;padding:6px 8px;font-size:12px;
+              font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+              color:#f8fafc;cursor:pointer;
+            ">
+              <span style="font-weight:${isExact ? '700' : '400'}">${word}</span>
+              <span style="font-size:10px;color:#94a3b8;opacity:0.8;">${affixTag}</span>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;text-transform:uppercase;color:${col.color};font-family:ui-monospace,monospace;border-bottom:1px dashed rgba(255,255,255,0.1);padding-bottom:6px;">
+              <span>${col.label}</span>
+              <span>${col.items.length}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              ${nodes || '<span style="color:#475569;font-size:11px;font-style:italic;">None</span>'}
+            </div>
+          </div>
+        `;
+      }).join('');
 
       card.innerHTML = `
-        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
-          <h3 style="margin:0;font-size:20px;color:#f1f5f9;font-weight:700;">${item.word}</h3>
-          <span style="font-size:12px;color:#94a3b8;font-style:italic;">${item.pos || ''}</span>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;border-bottom:1px solid #1f293d;padding-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <h2 style="margin:0;font-size:24px;color:#fff;font-weight:800;">${item.word}</h2>
+            <span style="font-family:ui-monospace,monospace;font-size:10px;text-transform:uppercase;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.4);color:#38bdf8;padding:2px 6px;border-radius:4px;">ROOT</span>
+          </div>
+          <span style="font-size:12px;color:#64748b;font-style:italic;">${item.pos || ''}</span>
         </div>
-        <p style="margin:0 0 12px 0;font-size:14px;color:#cbd5e1;line-height:1.4;">${item.definition || 'No definition available.'}</p>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${posPills}</div>
+        <p style="margin:0 0 16px 0;font-size:13.5px;color:#cbd5e1;line-height:1.5;">${item.definition || 'No definition cataloged.'}</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:10px;">
+          ${columnsHtml}
+        </div>
       `;
       frag.appendChild(card);
     }
 
-    resultsContainer.replaceChildren(frag);
-  }
+    container.replaceChildren(frag);
+  };
 
-  if (searchInput) {
-    searchInput.addEventListener('input', window.debounceSearch(async (e) => {
-      const term = e.target.value;
-      if (!term.trim()) {
-        resultsContainer.replaceChildren();
+  function initApp() {
+    const input = document.getElementById('search-input') || document.querySelector('input[type="search"]') || document.querySelector('input');
+    if (!input) return;
+
+    input.addEventListener('input', window.debounceSearch(async (e) => {
+      const term = e.target.value.trim();
+      const container = document.getElementById('results-container');
+      if (!term) {
+        if (container) container.replaceChildren();
         return;
       }
       const matches = await window.searchLexicon(term, 20);
-      renderClusters(matches);
+      window.renderClusters(matches);
     }, 120));
+
+    document.addEventListener('click', (e) => {
+      const node = e.target.closest('.affix-node');
+      if (node && node.dataset.word) {
+        input.value = node.dataset.word;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+  } else {
+    initApp();
   }
 })();
 </script>
-
 </body>
 </html>
