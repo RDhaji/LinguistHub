@@ -494,60 +494,71 @@
         return null;
       }
     }
-async function ensureLexiconHydrated() {
-      const db = await openIDB();
-      const isHydrated = await new Promise((resolve) => {
-        const tx = db.transaction('meta', 'readonly');
-        const req = tx.objectStore('meta').get('is_hydrated');
-        req.onsuccess = () => resolve(Boolean(req.result?.value));
-        req.onerror = () => resolve(false);
-      });
+let _hydrationPromise = null;
 
-      if (isHydrated) return;
+    async function ensureLexiconHydrated() {
+      if (_hydrationPromise) return _hydrationPromise;
 
-      console.log('[LinguistHub] Initiating sparse payload hydration...');
-      console.time('IDB-Sparse-Hydrate');
-      try {
-        const res = await fetch('./compiled_lexicon_payload.json');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const chunkSize = 15000;
+      _hydrationPromise = (async () => {
+        const db = await openIDB();
+        const isHydrated = await new Promise((resolve) => {
+          const tx = db.transaction('meta', 'readonly');
+          const req = tx.objectStore('meta').get('is_hydrated');
+          req.onsuccess = () => resolve(Boolean(req.result?.value));
+          req.onerror = () => resolve(false);
+        });
 
-        for (let i = 0; i < data.length; i += chunkSize) {
-          const chunk = data.slice(i, i + chunkSize);
-          await new Promise((resolve, reject) => {
-            const tx = db.transaction('clusters', 'readwrite');
-            const store = tx.objectStore('clusters');
-            for (let j = 0; j < chunk.length; j++) {
-              const item = chunk[j];
-              const f = item.f || {};
-              store.put({
-                word: item.w,
-                pos: item.p || 'noun',
-                definition: item.d || '',
-                forms: {
-                  noun: f.n || [],
-                  verb: f.v || [],
-                  adjective: f.j || [],
-                  adverb: f.r || []
-                },
-                synonyms: item.s || [],
-                antonyms: item.a || [],
-                ar: item.ar || ''
-              });
-            }
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
-          });
+        if (isHydrated) return;
+
+        console.log('[LinguistHub] Initiating single-flight payload hydration...');
+        console.time('IDB-Sparse-Hydrate');
+        try {
+          const res = await fetch('./compiled_lexicon_payload.json');
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          const chunkSize = 15000;
+
+          for (let i = 0; i < data.length; i += chunkSize) {
+            const chunk = data.slice(i, i + chunkSize);
+            await new Promise((resolve, reject) => {
+              const tx = db.transaction('clusters', 'readwrite');
+              const store = tx.objectStore('clusters');
+              for (let j = 0; j < chunk.length; j++) {
+                const item = chunk[j];
+                const f = item.f || {};
+                store.put({
+                  word: item.w,
+                  pos: item.p || 'noun',
+                  definition: item.d || '',
+                  forms: {
+                    noun: f.n || [],
+                    verb: f.v || [],
+                    adjective: f.j || [],
+                    adverb: f.r || []
+                  },
+                  synonyms: item.s || [],
+                  antonyms: item.a || [],
+                  ar: item.ar || ''
+                });
+              }
+              tx.oncomplete = () => resolve();
+              tx.onerror = () => reject(tx.error);
+            });
+          }
+
+          const metaTx = db.transaction('meta', 'readwrite');
+          metaTx.objectStore('meta').put({ key: 'is_hydrated', value: true, timestamp: Date.now() });
+          console.timeEnd('IDB-Sparse-Hydrate');
+          console.log('[LinguistHub] Offline cluster database fully hydrated.');
+        } catch (err) {
+          console.warn('[LinguistHub Hydration Failed]', err);
+          throw err;
+        } finally {
+          _hydrationPromise = null;
         }
+      })();
 
-        const metaTx = db.transaction('meta', 'readwrite');
-        metaTx.objectStore('meta').put({ key: 'is_hydrated', value: true, timestamp: Date.now() });
-        console.timeEnd('IDB-Sparse-Hydrate');
-        console.log('[LinguistHub] Offline cluster database fully hydrated.');
-      } catch (err) {
-        console.warn('[LinguistHub Hydration Failed]', err);
-      }
+      return _hydrationPromise;
     }
     ensureLexiconHydrated();
 
