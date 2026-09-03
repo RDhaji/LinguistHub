@@ -750,5 +750,106 @@ let _hydrationPromise = null;
       updateSidebar(); 
     }
   </script>
+<script>
+(() => {
+  let searchDebounceTimer = null;
+
+  window.searchLexicon = async function(query, limit = 20) {
+    const term = (query || '').trim().toLowerCase();
+    if (!term) return [];
+
+    const db = await openIDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('clusters', 'readonly');
+      const store = tx.objectStore('clusters');
+      
+      // Fast-path: Exact headword hit
+      const exactReq = store.get(term);
+      exactReq.onsuccess = () => {
+        const results = [];
+        if (exactReq.result) results.push(exactReq.result);
+
+        // Bounded prefix sweep: term <= key <= term + ￿
+        const range = IDBKeyRange.bound(term, term + '\uffff');
+        const cursorReq = store.openCursor(range);
+
+        cursorReq.onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor && results.length < limit) {
+            if (cursor.key !== term) {
+              results.push(cursor.value);
+            }
+            cursor.continue();
+          } else {
+            resolve(results);
+          }
+        };
+        cursorReq.onerror = () => reject(cursorReq.error);
+      };
+      exactReq.onerror = () => reject(exactReq.error);
+    });
+  };
+
+  window.debounceSearch = function(callback, delayMs = 120) {
+    return (...args) => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => callback(...args), delayMs);
+    };
+  };
+})();
+</script>
+
+<script>
+(() => {
+  const searchInput = document.getElementById('search-input') || document.querySelector('input[type="search"]') || document.querySelector('input');
+  const resultsContainer = document.getElementById('results-container') || document.getElementById('results') || (() => {
+    const div = document.createElement('div');
+    div.id = 'results-container';
+    div.style.cssText = 'max-width:800px;margin:24px auto;padding:0 16px;display:flex;flex-direction:column;gap:12px;';
+    document.body.appendChild(div);
+    return div;
+  })();
+
+  function renderClusters(clusters) {
+    const frag = document.createDocumentFragment();
+
+    for (const item of clusters) {
+      const card = document.createElement('article');
+      card.style.cssText = 'background:#1e293b;color:#f8fafc;border:1px solid #334155;border-radius:8px;padding:16px;font-family:system-ui,-apple-system,sans-serif;';
+
+      const forms = item.forms || {};
+      const posPills = ['noun', 'verb', 'adjective', 'adverb']
+        .filter(pos => forms[pos] && forms[pos].length)
+        .map(pos => `<span style="font-size:11px;text-transform:uppercase;background:#0f172a;color:#38bdf8;padding:2px 8px;border-radius:4px;border:1px solid #0284c7;font-weight:600;">${pos}: ${forms[pos].length}</span>`)
+        .join(' ');
+
+      card.innerHTML = `
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+          <h3 style="margin:0;font-size:20px;color:#f1f5f9;font-weight:700;">${item.word}</h3>
+          <span style="font-size:12px;color:#94a3b8;font-style:italic;">${item.pos || ''}</span>
+        </div>
+        <p style="margin:0 0 12px 0;font-size:14px;color:#cbd5e1;line-height:1.4;">${item.definition || 'No definition available.'}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${posPills}</div>
+      `;
+      frag.appendChild(card);
+    }
+
+    resultsContainer.replaceChildren(frag);
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', window.debounceSearch(async (e) => {
+      const term = e.target.value;
+      if (!term.trim()) {
+        resultsContainer.replaceChildren();
+        return;
+      }
+      const matches = await window.searchLexicon(term, 20);
+      renderClusters(matches);
+    }, 120));
+  }
+})();
+</script>
+
 </body>
 </html>
