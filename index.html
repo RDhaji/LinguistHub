@@ -143,6 +143,18 @@
 </head>
 <body>
 
+  <!-- Hydration Engine HUD -->
+  <div id="lh-hydration-hud" style="display:none;position:fixed;top:0;left:0;width:100vw;z-index:99999;background:rgba(15,23,42,0.92);backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,0.1);padding:10px 16px;font-family:monospace;font-size:12px;color:#f8fafc;box-sizing:border-box;box-shadow:0 4px 20px rgba(0,0,0,0.4);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="font-weight:600;letter-spacing:0.05em;color:#38bdf8;">[LINGUISTHUB] CLUSTER HYDRATION</span>
+      <span id="lh-hud-stats" style="color:#94a3b8;">0% (0 / 0)</span>
+    </div>
+    <div style="width:100%;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;">
+      <div id="lh-hud-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#0ea5e9,#38bdf8);transition:width 120ms cubic-bezier(0.4,0,0.2,1);"></div>
+    </div>
+  </div>
+
+
   <div id="login-overlay">
     <div class="modal">
       <h2 style="margin-bottom: 0.5rem; font-weight: 800;">LinguistHub</h2>
@@ -510,53 +522,44 @@ let _hydrationPromise = null;
 
         if (isHydrated) return;
 
-        console.log('[LinguistHub] Initiating single-flight payload hydration...');
-        console.time('IDB-Sparse-Hydrate');
-        try {
-          const res = await fetch('./compiled_lexicon_payload.json');
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
-          const chunkSize = 15000;
+        const hud = document.getElementById('lh-hydration-hud');
+        const hudBar = document.getElementById('lh-hud-bar');
+        const hudStats = document.getElementById('lh-hud-stats');
+        if (hud) hud.style.display = 'block';
 
-          for (let i = 0; i < data.length; i += chunkSize) {
-            const chunk = data.slice(i, i + chunkSize);
-            await new Promise((resolve, reject) => {
-              const tx = db.transaction('clusters', 'readwrite');
-              const store = tx.objectStore('clusters');
-              for (let j = 0; j < chunk.length; j++) {
-                const item = chunk[j];
-                const f = item.f || {};
-                store.put({
-                  word: item.w,
-                  pos: item.p || 'noun',
-                  definition: item.d || '',
-                  forms: {
-                    noun: f.n || [],
-                    verb: f.v || [],
-                    adjective: f.j || [],
-                    adverb: f.r || []
-                  },
-                  synonyms: item.s || [],
-                  antonyms: item.a || [],
-                  ar: item.ar || ''
-                });
-              }
-              tx.oncomplete = () => resolve();
-              tx.onerror = () => reject(tx.error);
-            });
-          }
+        await new Promise((resolve, reject) => {
+          const worker = new Worker('hydration.worker.js');
 
-          const metaTx = db.transaction('meta', 'readwrite');
-          metaTx.objectStore('meta').put({ key: 'is_hydrated', value: true, timestamp: Date.now() });
-          console.timeEnd('IDB-Sparse-Hydrate');
-          console.log('[LinguistHub] Offline cluster database fully hydrated.');
-        } catch (err) {
-          console.warn('[LinguistHub Hydration Failed]', err);
-          throw err;
-        } finally {
-          _hydrationPromise = null;
-        }
-      })();
+          worker.onmessage = (e) => {
+            const { type, processed, total, pct, message, stack } = e.data;
+
+            if (type === 'PROGRESS') {
+              if (hudBar) hudBar.style.width = `${pct}%`;
+              if (hudStats) hudStats.textContent = `${pct}% (${processed.toLocaleString()} / ${total.toLocaleString()})`;
+            } else if (type === 'COMPLETE') {
+              if (hud) hud.style.display = 'none';
+              console.log('[LinguistHub] Web Worker payload hydration finalized.');
+              worker.terminate();
+              resolve();
+            } else if (type === 'ERROR') {
+              if (hud) hud.style.display = 'none';
+              console.error('[LinguistHub Worker Failure]', message, stack);
+              worker.terminate();
+              reject(new Error(message));
+            }
+          };
+
+          worker.onerror = (err) => {
+            if (hud) hud.style.display = 'none';
+            worker.terminate();
+            reject(err);
+          };
+
+          worker.postMessage({ url: './compiled_lexicon_payload.json', chunkSize: 15000 });
+        });
+      })().finally(() => {
+        _hydrationPromise = null;
+      });
 
       return _hydrationPromise;
     }
