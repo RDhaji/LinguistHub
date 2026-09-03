@@ -1,11 +1,12 @@
-const SHELL_CACHE = 'lh-shell-v1';
-const PARTITION_CACHE = 'lh-partitions-v1';
+const SHELL_CACHE = 'lh-shell-v3';
+const PAYLOAD_CACHE = 'lh-payload-v3';
 
 const STATIC_SHELL = [
   './',
   './index.html',
   './manifest.json',
-  './icon.png'
+  './icon.png',
+  './hydration.worker.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -20,33 +21,34 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => k !== SHELL_CACHE && k !== PARTITION_CACHE)
+          .filter((k) => k !== SHELL_CACHE && k !== PAYLOAD_CACHE)
           .map((k) => caches.delete(k))
       )
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Dynamic partition caching for lexical chunks
-  if (url.pathname.includes('/by-letter/')) {
+  // 1. Gzip Lexicon Binary: Strict Cache-First with Guaranteed Storage Commit
+  if (url.pathname.endsWith('compiled_lexicon_payload.json.gz')) {
     event.respondWith(
-      caches.open(PARTITION_CACHE).then(async (cache) => {
-        const cached = await cache.match(event.request);
-        if (cached) return cached;
+      caches.open(PAYLOAD_CACHE).then(async (cache) => {
+        const match = await cache.match(event.request);
+        if (match) return match;
+
         try {
-          const response = await fetch(event.request);
-          if (response.status === 200) {
-            cache.put(event.request, response.clone());
+          const networkRes = await fetch(event.request);
+          if (networkRes.ok) {
+            // waitUntil keeps SW alive during 6.2MB write to Cache Storage
+            event.waitUntil(cache.put(event.request, networkRes.clone()));
           }
-          return response;
-        } catch (_) {
-          return new Response(JSON.stringify({ error: 'offline_partition_missing' }), {
-            headers: { 'Content-Type': 'application/json' },
-            status: 503
+          return networkRes;
+        } catch (err) {
+          return new Response('{"error":"offline_payload_unavailable"}', {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' }
           });
         }
       })
@@ -54,8 +56,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-First with Cache Fallback for shell assets
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
-  );
+  // 2. Core App Shell: Stale-While-Revalidate
+  if (event.request.method === 'GET' && url.origin === self.location.origin) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        const networkFetch = fetch(event.request).then((res) => {
+          if (res.ok) {
+            caches.open(SHELL_CACHE).then((cache) => cache.put(event.request, res.clone()));
+          }
+          return res;
+        }).catch(() => cached);
+
+        return cached || networkFetch;
+      })
+    );
+    return;
+  }
+
+  // 3. Fallthrough for external requests (e.g. fonts)
+  event.respondWith(fetch(event.request));
 });
