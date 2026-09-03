@@ -717,5 +717,65 @@ async function ensureLexiconHydrated() {
       updateSidebar(); 
     }
   </script>
+
+<script>
+window.hydrateLexiconStore = async function(url = './compiled_lexicon_payload.json', chunkSize = 15000) {
+  const res = await fetch(url);
+  const rawData = await res.json();
+  const db = await openIDB();
+
+  for (let i = 0; i < rawData.length; i += chunkSize) {
+    const chunk = rawData.slice(i, i + chunkSize);
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('clusters', 'readwrite');
+      const store = tx.objectStore('clusters');
+      for (const item of chunk) {
+        const forms = item.f || {};
+        store.put({
+          word: item.w,
+          pos: item.p,
+          definition: item.d,
+          forms: {
+            noun: forms.n || [],
+            verb: forms.v || [],
+            adjective: forms.j || [],
+            adverb: forms.r || []
+          },
+          synonyms: item.s || [],
+          antonyms: item.a || [],
+          ar: item.ar || ""
+        });
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+};
+
+(async () => {
+  const MIGRATION_KEY = 'lh_hydrated_v1_sparse';
+  if (localStorage.getItem(MIGRATION_KEY)) {
+    console.log('[*] IDB already hydrated with sparse payload.');
+    return;
+  }
+
+  console.time('IDB-Initial-Hydration');
+  try {
+    if (typeof openIDB !== 'function') throw new Error('openIDB() not accessible.');
+    await indexedDB.deleteDatabase('LinguistHub_Core');
+    await window.hydrateLexiconStore('./compiled_lexicon_payload.json');
+    localStorage.setItem(MIGRATION_KEY, 'true');
+    console.timeEnd('IDB-Initial-Hydration');
+
+    if (typeof getWordRecord === 'function') {
+      const probe = await getWordRecord('act');
+      console.log('[✔] Hydration Verified [ACT]:', probe);
+    }
+  } catch (err) {
+    console.error('[✘] Hydration failed:', err);
+  }
+})();
+</script>
+
 </body>
 </html>
