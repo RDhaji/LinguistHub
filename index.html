@@ -851,5 +851,27 @@ let _hydrationPromise = null;
 })();
 </script>
 
+<script>
+// Storage Eviction Immunity & Quota Monitor
+(async () => {
+  if (!navigator.storage || !navigator.storage.persist) return;
+
+  try {
+    let isPersisted = await navigator.storage.persisted();
+    if (!isPersisted) {
+      isPersisted = await navigator.storage.persist();
+    }
+
+    const estimate = await navigator.storage.estimate();
+    const usageMB = (estimate.usage / (1024 * 1024)).toFixed(1);
+    const quotaMB = (estimate.quota / (1024 * 1024)).toFixed(1);
+
+    console.info(`[Storage] Eviction Immunity: ${isPersisted ? 'ACTIVE' : 'BEST-EFFORT'} (${usageMB}MB / ${quotaMB}MB)`);
+  } catch (err) {
+    console.warn('[Storage] Quota negotiation failed:', err);
+  }
+})();
+</script>
+
 </body>
 </html>
